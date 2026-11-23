@@ -1,0 +1,2366 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AMFE de mantenimiento · App para el aula</title>
+<meta name="description" content="Aplicación web para hacer AMFE de mantenimiento en clase: mapa del proceso, análisis de modos de fallo, NPR, acciones y evaluación del profesor. Sin registro.">
+<style>
+:root{--ink:#1C2530;--paper:#F4F2ED;--card:#FBF9F5;--line:#DDD8CE;--or:#E57A35;--or2:#B04E17;--bl:#3A6FA3;--bl2:#1F4E7E;--soft:#E4ECF4;--mut:#5A6470;--ok:#2E7D4F;--warn:#B7791F;--bad:#B03A2E}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.45 Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 12px}
+button:hover{border-color:var(--bl)}
+button.pri{background:var(--ink);color:#fff;border-color:var(--ink)}
+button.acc{background:var(--or);color:var(--ink);border-color:var(--or);font-weight:600}
+button.ghost{background:transparent}
+button.danger{color:var(--bad)}
+button.on{background:var(--bl2);color:#fff;border-color:var(--bl2)}
+input,select,textarea{border:1px solid var(--line);border-radius:8px;padding:7px 9px;background:#fff;width:100%}
+textarea{resize:vertical;min-height:58px}
+label{font-size:12px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--mut);display:block;margin:0 0 4px}
+h1,h2,h3{margin:0;line-height:1.2}
+h2{font-size:22px}
+h3{font-size:16px}
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:16px;padding:10px 18px;background:var(--ink);color:#F4F2ED}
+.brand{font-size:17px;white-space:nowrap}
+.brand b{color:var(--or)}
+.who{flex:1;font-size:13px;color:#C9D2DC;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tools{display:flex;gap:10px;align-items:center}
+.tools button{background:transparent;color:#F4F2ED;border-color:#4A5868}
+#saved{font-size:12px;color:#9AA6B4}
+.steps{display:flex;gap:4px;padding:10px 18px 0;overflow-x:auto;border-bottom:1px solid var(--line);background:var(--paper);position:sticky;top:50px;z-index:15}
+.steps button{border:none;border-radius:8px 8px 0 0;background:transparent;padding:9px 14px;white-space:nowrap;color:var(--mut);border-bottom:3px solid transparent}
+.steps button.cur{color:var(--ink);font-weight:700;border-bottom-color:var(--or)}
+.steps button .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;background:var(--line)}
+.steps button .dot.ok{background:var(--ok)}.steps button .dot.part{background:var(--warn)}
+main{max-width:1280px;margin:0 auto;padding:20px 18px 60px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.stack{display:flex;flex-direction:column;gap:14px}
+.muted{color:var(--mut)}
+.small{font-size:13px}
+.hint{background:var(--soft);border-radius:10px;padding:10px 14px;font-size:14px}
+.hint b{color:var(--bl2)}
+.min{border-left:4px solid var(--or);background:#FBF3EC;border-radius:0 10px 10px 0;padding:10px 14px;font-size:14px}
+.min ul{margin:6px 0 0;padding-left:18px}
+.head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.kick{font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--or2)}
+details.caso{margin-bottom:14px}
+details.caso summary{cursor:pointer;font-weight:700}
+table{border-collapse:collapse;width:100%}
+th,td{text-align:left;vertical-align:top;padding:7px 9px;border-bottom:1px solid var(--line);font-size:14px}
+th{background:var(--ink);color:#F4F2ED;font-size:12px;letter-spacing:.3px;text-transform:uppercase}
+/* mapa */
+.mapwrap{display:grid;grid-template-columns:170px 1fr 260px;gap:14px;align-items:start}
+.palette{display:flex;flex-direction:column;gap:6px}
+.palette button{display:flex;align-items:center;gap:8px;text-align:left;font-size:13px}
+.palette .sw{width:14px;height:14px;border-radius:3px;flex:none}
+.canvas{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;touch-action:none}
+.canvas svg{display:block;width:100%;height:auto;user-select:none}
+.canvas.connect{outline:3px solid var(--bl);outline-offset:-3px}
+svg .node{cursor:grab}
+svg .node.sel .shape{stroke:var(--or)!important;stroke-width:4!important}
+svg .edge{cursor:pointer}
+svg .edge.sel line{stroke:var(--or)}
+.props{display:flex;flex-direction:column;gap:10px}
+.chk{display:flex;gap:8px;align-items:center;font-size:14px;text-transform:none;letter-spacing:0;color:var(--ink);font-weight:500}
+.chk input{width:auto}
+/* fallos */
+.fallo{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.fallo .fh{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.fallo .fh .n{font-weight:800;color:var(--or2);font-size:18px;min-width:34px}
+.fgrid{display:grid;grid-template-columns:1fr 1fr 150px;gap:10px 14px;align-items:start}
+.npr{display:inline-flex;align-items:center;justify-content:center;min-width:86px;padding:6px 12px;border-radius:999px;font-weight:800;font-size:15px;background:var(--line);color:var(--ink)}
+.npr.lo{background:#D8EBDD;color:#1E5A38}.npr.mid{background:#F6DFC4;color:#7A4A12}.npr.hi{background:#F2CFCB;color:#7D2219}
+.tag{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:3px 9px;background:var(--soft);color:var(--bl2)}
+.tag.warn{background:#F2CFCB;color:#7D2219}
+.tag.ok{background:#D8EBDD;color:#1E5A38}
+.selhelp{font-size:12px;color:var(--mut);margin-top:3px;min-height:16px}
+/* resumen */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.kpi .v{font-size:28px;font-weight:800}
+.kpi .l{font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px}
+.checks{display:flex;flex-direction:column;gap:6px}
+.ck{display:grid;grid-template-columns:28px 1fr;gap:8px;align-items:start;padding:8px 10px;border-radius:8px;background:#fff;border:1px solid var(--line)}
+.ck .i{font-weight:900;font-size:16px;text-align:center}
+.ck.ok .i{color:var(--ok)}.ck.part .i{color:var(--warn)}.ck.no .i{color:var(--bad)}
+.ck .d{font-size:13px;color:var(--mut)}
+/* modal */
+#modal{position:fixed;inset:0;background:rgba(28,37,48,.55);z-index:50;display:flex;align-items:center;justify-content:center;padding:20px}
+#modal[hidden]{display:none}
+.mbox{background:var(--paper);border-radius:14px;max-width:760px;width:100%;max-height:88vh;overflow:auto;padding:20px 22px;display:flex;flex-direction:column;gap:14px}
+/* profesor */
+#teacher{position:fixed;inset:0;z-index:40;background:var(--paper);overflow:auto}
+#teacher[hidden]{display:none}
+.tbar{position:sticky;top:0;display:flex;gap:12px;align-items:center;padding:10px 18px;background:var(--bl2);color:#fff;z-index:2}
+.tbar button{background:transparent;color:#fff;border-color:#6E8FB3}
+.tmain{max-width:1280px;margin:0 auto;padding:20px 18px 60px;display:flex;flex-direction:column;gap:16px}
+.drop{border:2px dashed var(--bl);border-radius:12px;padding:18px;text-align:center;background:#fff}
+.drop.over{background:var(--soft)}
+.rub td{vertical-align:middle}.rub td:nth-child(3){white-space:nowrap}
+.rub input[type=number]{width:70px}
+.rub input[type=range]{width:140px}
+.nota{font-size:34px;font-weight:800;color:var(--bl2)}
+#report{display:none}
+.crumbs{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:0 0 8px;font-size:14px}
+.crumbs button{padding:4px 10px;font-size:13px}
+.crumbs .cur{font-weight:800}
+.lint{font-size:13px;color:#7A4A12;background:#FFF4E5;border-radius:8px;padding:6px 10px}
+.lint:empty{display:none}
+.lint div+div{margin-top:3px}
+.subcard{background:var(--soft);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.mx{display:grid;grid-template-columns:28px repeat(10,1fr);gap:2px;font-size:11px;max-width:420px}
+.mx .c{aspect-ratio:1/1;border-radius:3px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;color:#1C2530;flex-wrap:wrap;line-height:1}
+.mx .ax{display:flex;align-items:center;justify-content:center;color:var(--mut)}
+.helpg dt{font-weight:800;margin-top:8px}.helpg dd{margin:2px 0 0 0;color:#3A4552}
+.qr{background:#fff;padding:12px;border-radius:10px;display:inline-block}
+.tools .tb{padding:6px 10px}
+.mapbox svg{width:100%;height:100%;display:block}
+#report body,#report{background:#fff}
+@media (max-width:1000px){.mapwrap{grid-template-columns:1fr}.palette{flex-direction:row;flex-wrap:wrap}.fgrid{grid-template-columns:1fr 1fr}.grid3,.kpis{grid-template-columns:1fr 1fr}.grid2{grid-template-columns:1fr}}
+@media print{
+  body>*:not(#report){display:none!important}
+  #report{display:block!important;font-size:11pt}
+  #report .pb{page-break-before:always}
+  #report table{page-break-inside:auto}
+  #report tr{page-break-inside:avoid}
+  #report th{background:#1C2530!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .npr{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  @page{size:A4 landscape;margin:12mm}
+}
+</style>
+</head>
+<body>
+<noscript><div style="padding:30px;font:18px sans-serif">Esta aplicación necesita JavaScript. Ábrela en un navegador (Chrome, Edge, Firefox o Safari), no en la vista previa de WhatsApp, del correo o de Archivos.</div></noscript>
+<header class="top">
+  <div class="brand"><b>AMFE</b> de mantenimiento</div>
+  <div class="who" id="who"></div>
+  <div class="tools"><span id="saved"></span><button class="tb" id="btnUndo" title="Deshacer (Ctrl+Z)">↶</button><button class="tb" id="btnRedo" title="Rehacer (Ctrl+Y)">↷</button><button class="acc" id="btnSave" title="Descarga un informe con los datos dentro para seguir en otro ordenador (Ctrl+S)">Guardar</button><button id="btnHelp" title="Glosario y ayuda">Ayuda</button><button id="btnProfe" title="Importar entregas y evaluarlas">Modo profesor</button></div>
+</header>
+<nav class="steps" id="steps"></nav>
+<main id="main"></main>
+<div id="teacher" hidden></div>
+<div id="modal" hidden></div>
+<div id="report"></div>
+<script>
+/* QRCode for JavaScript · Copyright (c) 2009 Kazuhiko Arase · Licencia MIT (vía qrcode-terminal) */
+const QRLIB=(function(){const QM={},QC={};function req(n){n=n.replace(/\.js$/,'');if(QC[n])return QC[n].exports;const m={exports:{}};QC[n]=m;QM[n](m,m.exports,req);return m.exports;}
+QM['./QR8bitByte']=function(module,exports,require){
+var QRMode = require('./QRMode');
+
+function QR8bitByte(data) {
+	this.mode = QRMode.MODE_8BIT_BYTE;
+	this.data = data;
+}
+
+QR8bitByte.prototype = {
+
+	getLength : function() {
+		return this.data.length;
+	},
+	
+	write : function(buffer) {
+		for (var i = 0; i < this.data.length; i++) {
+			// not JIS ...
+			buffer.put(this.data.charCodeAt(i), 8);
+		}
+	}
+};
+
+module.exports = QR8bitByte;
+
+};
+QM['./QRBitBuffer']=function(module,exports,require){
+function QRBitBuffer() {
+	this.buffer = [];
+	this.length = 0;
+}
+
+QRBitBuffer.prototype = {
+
+	get : function(index) {
+		var bufIndex = Math.floor(index / 8);
+		return ( (this.buffer[bufIndex] >>> (7 - index % 8) ) & 1) == 1;
+	},
+	
+	put : function(num, length) {
+		for (var i = 0; i < length; i++) {
+			this.putBit( ( (num >>> (length - i - 1) ) & 1) == 1);
+		}
+	},
+	
+	getLengthInBits : function() {
+		return this.length;
+	},
+	
+	putBit : function(bit) {
+	
+		var bufIndex = Math.floor(this.length / 8);
+		if (this.buffer.length <= bufIndex) {
+			this.buffer.push(0);
+		}
+	
+		if (bit) {
+			this.buffer[bufIndex] |= (0x80 >>> (this.length % 8) );
+		}
+	
+		this.length++;
+	}
+};
+
+module.exports = QRBitBuffer;
+
+};
+QM['./QRErrorCorrectLevel']=function(module,exports,require){
+module.exports = {
+	L : 1,
+	M : 0,
+	Q : 3,
+	H : 2
+};
+
+
+};
+QM['./QRMaskPattern']=function(module,exports,require){
+module.exports = {
+	PATTERN000 : 0,
+	PATTERN001 : 1,
+	PATTERN010 : 2,
+	PATTERN011 : 3,
+	PATTERN100 : 4,
+	PATTERN101 : 5,
+	PATTERN110 : 6,
+	PATTERN111 : 7
+};
+
+};
+QM['./QRMath']=function(module,exports,require){
+var QRMath = {
+
+	glog : function(n) {
+	
+		if (n < 1) {
+			throw new Error("glog(" + n + ")");
+		}
+		
+		return QRMath.LOG_TABLE[n];
+	},
+	
+	gexp : function(n) {
+	
+		while (n < 0) {
+			n += 255;
+		}
+	
+		while (n >= 256) {
+			n -= 255;
+		}
+	
+		return QRMath.EXP_TABLE[n];
+	},
+	
+	EXP_TABLE : new Array(256),
+	
+	LOG_TABLE : new Array(256)
+
+};
+	
+for (var i = 0; i < 8; i++) {
+	QRMath.EXP_TABLE[i] = 1 << i;
+}
+for (var i = 8; i < 256; i++) {
+	QRMath.EXP_TABLE[i] = QRMath.EXP_TABLE[i - 4]
+		^ QRMath.EXP_TABLE[i - 5]
+		^ QRMath.EXP_TABLE[i - 6]
+		^ QRMath.EXP_TABLE[i - 8];
+}
+for (var i = 0; i < 255; i++) {
+	QRMath.LOG_TABLE[QRMath.EXP_TABLE[i] ] = i;
+}
+
+module.exports = QRMath;
+
+};
+QM['./QRMode']=function(module,exports,require){
+module.exports = {
+    MODE_NUMBER :       1 << 0,
+    MODE_ALPHA_NUM :    1 << 1,
+    MODE_8BIT_BYTE :    1 << 2,
+    MODE_KANJI :        1 << 3
+};
+
+};
+QM['./QRPolynomial']=function(module,exports,require){
+var QRMath = require('./QRMath');
+
+function QRPolynomial(num, shift) {
+	if (num.length === undefined) {
+		throw new Error(num.length + "/" + shift);
+	}
+
+	var offset = 0;
+
+	while (offset < num.length && num[offset] === 0) {
+		offset++;
+	}
+
+	this.num = new Array(num.length - offset + shift);
+	for (var i = 0; i < num.length - offset; i++) {
+		this.num[i] = num[i + offset];
+	}
+}
+
+QRPolynomial.prototype = {
+
+	get : function(index) {
+		return this.num[index];
+	},
+	
+	getLength : function() {
+		return this.num.length;
+	},
+	
+	multiply : function(e) {
+	
+		var num = new Array(this.getLength() + e.getLength() - 1);
+	
+		for (var i = 0; i < this.getLength(); i++) {
+			for (var j = 0; j < e.getLength(); j++) {
+				num[i + j] ^= QRMath.gexp(QRMath.glog(this.get(i) ) + QRMath.glog(e.get(j) ) );
+			}
+		}
+	
+		return new QRPolynomial(num, 0);
+	},
+	
+	mod : function(e) {
+	
+		if (this.getLength() - e.getLength() < 0) {
+			return this;
+		}
+	
+		var ratio = QRMath.glog(this.get(0) ) - QRMath.glog(e.get(0) );
+	
+		var num = new Array(this.getLength() );
+		
+		for (var i = 0; i < this.getLength(); i++) {
+			num[i] = this.get(i);
+		}
+		
+		for (var x = 0; x < e.getLength(); x++) {
+			num[x] ^= QRMath.gexp(QRMath.glog(e.get(x) ) + ratio);
+		}
+	
+		// recursive call
+		return new QRPolynomial(num, 0).mod(e);
+	}
+};
+
+module.exports = QRPolynomial;
+
+};
+QM['./QRRSBlock']=function(module,exports,require){
+var QRErrorCorrectLevel = require('./QRErrorCorrectLevel');
+
+function QRRSBlock(totalCount, dataCount) {
+	this.totalCount = totalCount;
+	this.dataCount  = dataCount;
+}
+
+QRRSBlock.RS_BLOCK_TABLE = [
+
+	// L
+	// M
+	// Q
+	// H
+
+	// 1
+	[1, 26, 19],
+	[1, 26, 16],
+	[1, 26, 13],
+	[1, 26, 9],
+	
+	// 2
+	[1, 44, 34],
+	[1, 44, 28],
+	[1, 44, 22],
+	[1, 44, 16],
+
+	// 3
+	[1, 70, 55],
+	[1, 70, 44],
+	[2, 35, 17],
+	[2, 35, 13],
+
+	// 4		
+	[1, 100, 80],
+	[2, 50, 32],
+	[2, 50, 24],
+	[4, 25, 9],
+	
+	// 5
+	[1, 134, 108],
+	[2, 67, 43],
+	[2, 33, 15, 2, 34, 16],
+	[2, 33, 11, 2, 34, 12],
+	
+	// 6
+	[2, 86, 68],
+	[4, 43, 27],
+	[4, 43, 19],
+	[4, 43, 15],
+	
+	// 7		
+	[2, 98, 78],
+	[4, 49, 31],
+	[2, 32, 14, 4, 33, 15],
+	[4, 39, 13, 1, 40, 14],
+	
+	// 8
+	[2, 121, 97],
+	[2, 60, 38, 2, 61, 39],
+	[4, 40, 18, 2, 41, 19],
+	[4, 40, 14, 2, 41, 15],
+	
+	// 9
+	[2, 146, 116],
+	[3, 58, 36, 2, 59, 37],
+	[4, 36, 16, 4, 37, 17],
+	[4, 36, 12, 4, 37, 13],
+	
+	// 10		
+	[2, 86, 68, 2, 87, 69],
+	[4, 69, 43, 1, 70, 44],
+	[6, 43, 19, 2, 44, 20],
+	[6, 43, 15, 2, 44, 16],
+
+	// 11
+	[4, 101, 81],
+	[1, 80, 50, 4, 81, 51],
+	[4, 50, 22, 4, 51, 23],
+	[3, 36, 12, 8, 37, 13],
+
+	// 12
+	[2, 116, 92, 2, 117, 93],
+	[6, 58, 36, 2, 59, 37],
+	[4, 46, 20, 6, 47, 21],
+	[7, 42, 14, 4, 43, 15],
+
+	// 13
+	[4, 133, 107],
+	[8, 59, 37, 1, 60, 38],
+	[8, 44, 20, 4, 45, 21],
+	[12, 33, 11, 4, 34, 12],
+
+	// 14
+	[3, 145, 115, 1, 146, 116],
+	[4, 64, 40, 5, 65, 41],
+	[11, 36, 16, 5, 37, 17],
+	[11, 36, 12, 5, 37, 13],
+
+	// 15
+	[5, 109, 87, 1, 110, 88],
+	[5, 65, 41, 5, 66, 42],
+	[5, 54, 24, 7, 55, 25],
+	[11, 36, 12],
+
+	// 16
+	[5, 122, 98, 1, 123, 99],
+	[7, 73, 45, 3, 74, 46],
+	[15, 43, 19, 2, 44, 20],
+	[3, 45, 15, 13, 46, 16],
+
+	// 17
+	[1, 135, 107, 5, 136, 108],
+	[10, 74, 46, 1, 75, 47],
+	[1, 50, 22, 15, 51, 23],
+	[2, 42, 14, 17, 43, 15],
+
+	// 18
+	[5, 150, 120, 1, 151, 121],
+	[9, 69, 43, 4, 70, 44],
+	[17, 50, 22, 1, 51, 23],
+	[2, 42, 14, 19, 43, 15],
+
+	// 19
+	[3, 141, 113, 4, 142, 114],
+	[3, 70, 44, 11, 71, 45],
+	[17, 47, 21, 4, 48, 22],
+	[9, 39, 13, 16, 40, 14],
+
+	// 20
+	[3, 135, 107, 5, 136, 108],
+	[3, 67, 41, 13, 68, 42],
+	[15, 54, 24, 5, 55, 25],
+	[15, 43, 15, 10, 44, 16],
+
+	// 21
+	[4, 144, 116, 4, 145, 117],
+	[17, 68, 42],
+	[17, 50, 22, 6, 51, 23],
+	[19, 46, 16, 6, 47, 17],
+
+	// 22
+	[2, 139, 111, 7, 140, 112],
+	[17, 74, 46],
+	[7, 54, 24, 16, 55, 25],
+	[34, 37, 13],
+
+	// 23
+	[4, 151, 121, 5, 152, 122],
+	[4, 75, 47, 14, 76, 48],
+	[11, 54, 24, 14, 55, 25],
+	[16, 45, 15, 14, 46, 16],
+
+	// 24
+	[6, 147, 117, 4, 148, 118],
+	[6, 73, 45, 14, 74, 46],
+	[11, 54, 24, 16, 55, 25],
+	[30, 46, 16, 2, 47, 17],
+
+	// 25
+	[8, 132, 106, 4, 133, 107],
+	[8, 75, 47, 13, 76, 48],
+	[7, 54, 24, 22, 55, 25],
+	[22, 45, 15, 13, 46, 16],
+
+	// 26
+	[10, 142, 114, 2, 143, 115],
+	[19, 74, 46, 4, 75, 47],
+	[28, 50, 22, 6, 51, 23],
+	[33, 46, 16, 4, 47, 17],
+
+	// 27
+	[8, 152, 122, 4, 153, 123],
+	[22, 73, 45, 3, 74, 46],
+	[8, 53, 23, 26, 54, 24],
+	[12, 45, 15, 28, 46, 16],
+
+	// 28
+	[3, 147, 117, 10, 148, 118],
+	[3, 73, 45, 23, 74, 46],
+	[4, 54, 24, 31, 55, 25],
+	[11, 45, 15, 31, 46, 16],
+
+	// 29
+	[7, 146, 116, 7, 147, 117],
+	[21, 73, 45, 7, 74, 46],
+	[1, 53, 23, 37, 54, 24],
+	[19, 45, 15, 26, 46, 16],
+
+	// 30
+	[5, 145, 115, 10, 146, 116],
+	[19, 75, 47, 10, 76, 48],
+	[15, 54, 24, 25, 55, 25],
+	[23, 45, 15, 25, 46, 16],
+
+	// 31
+	[13, 145, 115, 3, 146, 116],
+	[2, 74, 46, 29, 75, 47],
+	[42, 54, 24, 1, 55, 25],
+	[23, 45, 15, 28, 46, 16],
+
+	// 32
+	[17, 145, 115],
+	[10, 74, 46, 23, 75, 47],
+	[10, 54, 24, 35, 55, 25],
+	[19, 45, 15, 35, 46, 16],
+
+	// 33
+	[17, 145, 115, 1, 146, 116],
+	[14, 74, 46, 21, 75, 47],
+	[29, 54, 24, 19, 55, 25],
+	[11, 45, 15, 46, 46, 16],
+
+	// 34
+	[13, 145, 115, 6, 146, 116],
+	[14, 74, 46, 23, 75, 47],
+	[44, 54, 24, 7, 55, 25],
+	[59, 46, 16, 1, 47, 17],
+
+	// 35
+	[12, 151, 121, 7, 152, 122],
+	[12, 75, 47, 26, 76, 48],
+	[39, 54, 24, 14, 55, 25],
+	[22, 45, 15, 41, 46, 16],
+
+	// 36
+	[6, 151, 121, 14, 152, 122],
+	[6, 75, 47, 34, 76, 48],
+	[46, 54, 24, 10, 55, 25],
+	[2, 45, 15, 64, 46, 16],
+
+	// 37
+	[17, 152, 122, 4, 153, 123],
+	[29, 74, 46, 14, 75, 47],
+	[49, 54, 24, 10, 55, 25],
+	[24, 45, 15, 46, 46, 16],
+
+	// 38
+	[4, 152, 122, 18, 153, 123],
+	[13, 74, 46, 32, 75, 47],
+	[48, 54, 24, 14, 55, 25],
+	[42, 45, 15, 32, 46, 16],
+
+	// 39
+	[20, 147, 117, 4, 148, 118],
+	[40, 75, 47, 7, 76, 48],
+	[43, 54, 24, 22, 55, 25],
+	[10, 45, 15, 67, 46, 16],
+
+	// 40
+	[19, 148, 118, 6, 149, 119],
+	[18, 75, 47, 31, 76, 48],
+	[34, 54, 24, 34, 55, 25],
+	[20, 45, 15, 61, 46, 16]
+];
+
+QRRSBlock.getRSBlocks = function(typeNumber, errorCorrectLevel) {
+	
+	var rsBlock = QRRSBlock.getRsBlockTable(typeNumber, errorCorrectLevel);
+	
+	if (rsBlock === undefined) {
+		throw new Error("bad rs block @ typeNumber:" + typeNumber + "/errorCorrectLevel:" + errorCorrectLevel);
+	}
+
+	var length = rsBlock.length / 3;
+	
+	var list = [];
+	
+	for (var i = 0; i < length; i++) {
+
+		var count = rsBlock[i * 3 + 0];
+		var totalCount = rsBlock[i * 3 + 1];
+		var dataCount  = rsBlock[i * 3 + 2];
+
+		for (var j = 0; j < count; j++) {
+			list.push(new QRRSBlock(totalCount, dataCount) );	
+		}
+	}
+	
+	return list;
+};
+
+QRRSBlock.getRsBlockTable = function(typeNumber, errorCorrectLevel) {
+
+	switch(errorCorrectLevel) {
+	case QRErrorCorrectLevel.L :
+		return QRRSBlock.RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 0];
+	case QRErrorCorrectLevel.M :
+		return QRRSBlock.RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 1];
+	case QRErrorCorrectLevel.Q :
+		return QRRSBlock.RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 2];
+	case QRErrorCorrectLevel.H :
+		return QRRSBlock.RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 3];
+	default :
+		return undefined;
+	}
+};
+
+module.exports = QRRSBlock;
+
+};
+QM['./QRUtil']=function(module,exports,require){
+var QRMode = require('./QRMode');
+var QRPolynomial = require('./QRPolynomial');
+var QRMath = require('./QRMath');
+var QRMaskPattern = require('./QRMaskPattern');
+
+var QRUtil = {
+
+    PATTERN_POSITION_TABLE : [
+        [],
+        [6, 18],
+        [6, 22],
+        [6, 26],
+        [6, 30],
+        [6, 34],
+        [6, 22, 38],
+        [6, 24, 42],
+        [6, 26, 46],
+        [6, 28, 50],
+        [6, 30, 54],        
+        [6, 32, 58],
+        [6, 34, 62],
+        [6, 26, 46, 66],
+        [6, 26, 48, 70],
+        [6, 26, 50, 74],
+        [6, 30, 54, 78],
+        [6, 30, 56, 82],
+        [6, 30, 58, 86],
+        [6, 34, 62, 90],
+        [6, 28, 50, 72, 94],
+        [6, 26, 50, 74, 98],
+        [6, 30, 54, 78, 102],
+        [6, 28, 54, 80, 106],
+        [6, 32, 58, 84, 110],
+        [6, 30, 58, 86, 114],
+        [6, 34, 62, 90, 118],
+        [6, 26, 50, 74, 98, 122],
+        [6, 30, 54, 78, 102, 126],
+        [6, 26, 52, 78, 104, 130],
+        [6, 30, 56, 82, 108, 134],
+        [6, 34, 60, 86, 112, 138],
+        [6, 30, 58, 86, 114, 142],
+        [6, 34, 62, 90, 118, 146],
+        [6, 30, 54, 78, 102, 126, 150],
+        [6, 24, 50, 76, 102, 128, 154],
+        [6, 28, 54, 80, 106, 132, 158],
+        [6, 32, 58, 84, 110, 136, 162],
+        [6, 26, 54, 82, 110, 138, 166],
+        [6, 30, 58, 86, 114, 142, 170]
+    ],
+
+    G15 : (1 << 10) | (1 << 8) | (1 << 5) | (1 << 4) | (1 << 2) | (1 << 1) | (1 << 0),
+    G18 : (1 << 12) | (1 << 11) | (1 << 10) | (1 << 9) | (1 << 8) | (1 << 5) | (1 << 2) | (1 << 0),
+    G15_MASK : (1 << 14) | (1 << 12) | (1 << 10)    | (1 << 4) | (1 << 1),
+
+    getBCHTypeInfo : function(data) {
+        var d = data << 10;
+        while (QRUtil.getBCHDigit(d) - QRUtil.getBCHDigit(QRUtil.G15) >= 0) {
+            d ^= (QRUtil.G15 << (QRUtil.getBCHDigit(d) - QRUtil.getBCHDigit(QRUtil.G15) ) );    
+        }
+        return ( (data << 10) | d) ^ QRUtil.G15_MASK;
+    },
+
+    getBCHTypeNumber : function(data) {
+        var d = data << 12;
+        while (QRUtil.getBCHDigit(d) - QRUtil.getBCHDigit(QRUtil.G18) >= 0) {
+            d ^= (QRUtil.G18 << (QRUtil.getBCHDigit(d) - QRUtil.getBCHDigit(QRUtil.G18) ) );    
+        }
+        return (data << 12) | d;
+    },
+
+    getBCHDigit : function(data) {
+
+        var digit = 0;
+
+        while (data !== 0) {
+            digit++;
+            data >>>= 1;
+        }
+
+        return digit;
+    },
+
+    getPatternPosition : function(typeNumber) {
+        return QRUtil.PATTERN_POSITION_TABLE[typeNumber - 1];
+    },
+
+    getMask : function(maskPattern, i, j) {
+        
+        switch (maskPattern) {
+            
+        case QRMaskPattern.PATTERN000 : return (i + j) % 2 === 0;
+        case QRMaskPattern.PATTERN001 : return i % 2 === 0;
+        case QRMaskPattern.PATTERN010 : return j % 3 === 0;
+        case QRMaskPattern.PATTERN011 : return (i + j) % 3 === 0;
+        case QRMaskPattern.PATTERN100 : return (Math.floor(i / 2) + Math.floor(j / 3) ) % 2 === 0;
+        case QRMaskPattern.PATTERN101 : return (i * j) % 2 + (i * j) % 3 === 0;
+        case QRMaskPattern.PATTERN110 : return ( (i * j) % 2 + (i * j) % 3) % 2 === 0;
+        case QRMaskPattern.PATTERN111 : return ( (i * j) % 3 + (i + j) % 2) % 2 === 0;
+
+        default :
+            throw new Error("bad maskPattern:" + maskPattern);
+        }
+    },
+
+    getErrorCorrectPolynomial : function(errorCorrectLength) {
+
+        var a = new QRPolynomial([1], 0);
+
+        for (var i = 0; i < errorCorrectLength; i++) {
+            a = a.multiply(new QRPolynomial([1, QRMath.gexp(i)], 0) );
+        }
+
+        return a;
+    },
+
+    getLengthInBits : function(mode, type) {
+
+        if (1 <= type && type < 10) {
+
+            // 1 - 9
+
+            switch(mode) {
+            case QRMode.MODE_NUMBER     : return 10;
+            case QRMode.MODE_ALPHA_NUM  : return 9;
+            case QRMode.MODE_8BIT_BYTE  : return 8;
+            case QRMode.MODE_KANJI      : return 8;
+            default :
+                throw new Error("mode:" + mode);
+            }
+
+        } else if (type < 27) {
+
+            // 10 - 26
+
+            switch(mode) {
+            case QRMode.MODE_NUMBER     : return 12;
+            case QRMode.MODE_ALPHA_NUM  : return 11;
+            case QRMode.MODE_8BIT_BYTE  : return 16;
+            case QRMode.MODE_KANJI      : return 10;
+            default :
+                throw new Error("mode:" + mode);
+            }
+
+        } else if (type < 41) {
+
+            // 27 - 40
+
+            switch(mode) {
+            case QRMode.MODE_NUMBER     : return 14;
+            case QRMode.MODE_ALPHA_NUM  : return 13;
+            case QRMode.MODE_8BIT_BYTE  : return 16;
+            case QRMode.MODE_KANJI      : return 12;
+            default :
+                throw new Error("mode:" + mode);
+            }
+
+        } else {
+            throw new Error("type:" + type);
+        }
+    },
+
+    getLostPoint : function(qrCode) {
+        
+        var moduleCount = qrCode.getModuleCount();
+        var lostPoint = 0;
+        var row = 0; 
+        var col = 0;
+
+        
+        // LEVEL1
+        
+        for (row = 0; row < moduleCount; row++) {
+
+            for (col = 0; col < moduleCount; col++) {
+
+                var sameCount = 0;
+                var dark = qrCode.isDark(row, col);
+
+                for (var r = -1; r <= 1; r++) {
+
+                    if (row + r < 0 || moduleCount <= row + r) {
+                        continue;
+                    }
+
+                    for (var c = -1; c <= 1; c++) {
+
+                        if (col + c < 0 || moduleCount <= col + c) {
+                            continue;
+                        }
+
+                        if (r === 0 && c === 0) {
+                            continue;
+                        }
+
+                        if (dark === qrCode.isDark(row + r, col + c) ) {
+                            sameCount++;
+                        }
+                    }
+                }
+
+                if (sameCount > 5) {
+                    lostPoint += (3 + sameCount - 5);
+                }
+            }
+        }
+
+        // LEVEL2
+
+        for (row = 0; row < moduleCount - 1; row++) {
+            for (col = 0; col < moduleCount - 1; col++) {
+                var count = 0;
+                if (qrCode.isDark(row,     col    ) ) count++;
+                if (qrCode.isDark(row + 1, col    ) ) count++;
+                if (qrCode.isDark(row,     col + 1) ) count++;
+                if (qrCode.isDark(row + 1, col + 1) ) count++;
+                if (count === 0 || count === 4) {
+                    lostPoint += 3;
+                }
+            }
+        }
+
+        // LEVEL3
+
+        for (row = 0; row < moduleCount; row++) {
+            for (col = 0; col < moduleCount - 6; col++) {
+                if (qrCode.isDark(row, col) && 
+                        !qrCode.isDark(row, col + 1) && 
+                         qrCode.isDark(row, col + 2) && 
+                         qrCode.isDark(row, col + 3) && 
+                         qrCode.isDark(row, col + 4) && 
+                        !qrCode.isDark(row, col + 5) && 
+                         qrCode.isDark(row, col + 6) ) {
+                    lostPoint += 40;
+                }
+            }
+        }
+
+        for (col = 0; col < moduleCount; col++) {
+            for (row = 0; row < moduleCount - 6; row++) {
+                if (qrCode.isDark(row, col) &&
+                        !qrCode.isDark(row + 1, col) &&
+                         qrCode.isDark(row + 2, col) &&
+                         qrCode.isDark(row + 3, col) &&
+                         qrCode.isDark(row + 4, col) &&
+                        !qrCode.isDark(row + 5, col) &&
+                         qrCode.isDark(row + 6, col) ) {
+                    lostPoint += 40;
+                }
+            }
+        }
+
+        // LEVEL4
+        
+        var darkCount = 0;
+
+        for (col = 0; col < moduleCount; col++) {
+            for (row = 0; row < moduleCount; row++) {
+                if (qrCode.isDark(row, col) ) {
+                    darkCount++;
+                }
+            }
+        }
+        
+        var ratio = Math.abs(100 * darkCount / moduleCount / moduleCount - 50) / 5;
+        lostPoint += ratio * 10;
+
+        return lostPoint;       
+    }
+
+};
+
+module.exports = QRUtil;
+
+};
+QM['./index']=function(module,exports,require){
+//---------------------------------------------------------------------
+// QRCode for JavaScript
+//
+// Copyright (c) 2009 Kazuhiko Arase
+//
+// URL: http://www.d-project.com/
+//
+// Licensed under the MIT license:
+//   http://www.opensource.org/licenses/mit-license.php
+//
+// The word "QR Code" is registered trademark of 
+// DENSO WAVE INCORPORATED
+//   http://www.denso-wave.com/qrcode/faqpatent-e.html
+//
+//---------------------------------------------------------------------
+// Modified to work in node for this project (and some refactoring)
+//---------------------------------------------------------------------
+
+var QR8bitByte = require('./QR8bitByte');
+var QRUtil = require('./QRUtil');
+var QRPolynomial = require('./QRPolynomial');
+var QRRSBlock = require('./QRRSBlock');
+var QRBitBuffer = require('./QRBitBuffer');
+
+function QRCode(typeNumber, errorCorrectLevel) {
+	this.typeNumber = typeNumber;
+	this.errorCorrectLevel = errorCorrectLevel;
+	this.modules = null;
+	this.moduleCount = 0;
+	this.dataCache = null;
+	this.dataList = [];
+}
+
+QRCode.prototype = {
+	
+	addData : function(data) {
+		var newData = new QR8bitByte(data);
+		this.dataList.push(newData);
+		this.dataCache = null;
+	},
+	
+	isDark : function(row, col) {
+		if (row < 0 || this.moduleCount <= row || col < 0 || this.moduleCount <= col) {
+			throw new Error(row + "," + col);
+		}
+		return this.modules[row][col];
+	},
+
+	getModuleCount : function() {
+		return this.moduleCount;
+	},
+	
+	make : function() {
+		// Calculate automatically typeNumber if provided is < 1
+		if (this.typeNumber < 1 ){
+			var typeNumber = 1;
+			for (typeNumber = 1; typeNumber < 40; typeNumber++) {
+				var rsBlocks = QRRSBlock.getRSBlocks(typeNumber, this.errorCorrectLevel);
+
+				var buffer = new QRBitBuffer();
+				var totalDataCount = 0;
+				for (var i = 0; i < rsBlocks.length; i++) {
+					totalDataCount += rsBlocks[i].dataCount;
+				}
+
+				for (var x = 0; x < this.dataList.length; x++) {
+					var data = this.dataList[x];
+					buffer.put(data.mode, 4);
+					buffer.put(data.getLength(), QRUtil.getLengthInBits(data.mode, typeNumber) );
+					data.write(buffer);
+				}
+				if (buffer.getLengthInBits() <= totalDataCount * 8)
+					break;
+			}
+			this.typeNumber = typeNumber;
+		}
+		this.makeImpl(false, this.getBestMaskPattern() );
+	},
+	
+	makeImpl : function(test, maskPattern) {
+		
+		this.moduleCount = this.typeNumber * 4 + 17;
+		this.modules = new Array(this.moduleCount);
+		
+		for (var row = 0; row < this.moduleCount; row++) {
+			
+			this.modules[row] = new Array(this.moduleCount);
+			
+			for (var col = 0; col < this.moduleCount; col++) {
+				this.modules[row][col] = null;//(col + row) % 3;
+			}
+		}
+	
+		this.setupPositionProbePattern(0, 0);
+		this.setupPositionProbePattern(this.moduleCount - 7, 0);
+		this.setupPositionProbePattern(0, this.moduleCount - 7);
+		this.setupPositionAdjustPattern();
+		this.setupTimingPattern();
+		this.setupTypeInfo(test, maskPattern);
+		
+		if (this.typeNumber >= 7) {
+			this.setupTypeNumber(test);
+		}
+	
+		if (this.dataCache === null) {
+			this.dataCache = QRCode.createData(this.typeNumber, this.errorCorrectLevel, this.dataList);
+		}
+	
+		this.mapData(this.dataCache, maskPattern);
+	},
+
+	setupPositionProbePattern : function(row, col)  {
+		
+		for (var r = -1; r <= 7; r++) {
+			
+			if (row + r <= -1 || this.moduleCount <= row + r) continue;
+			
+			for (var c = -1; c <= 7; c++) {
+				
+				if (col + c <= -1 || this.moduleCount <= col + c) continue;
+				
+				if ( (0 <= r && r <= 6 && (c === 0 || c === 6) ) || 
+                     (0 <= c && c <= 6 && (r === 0 || r === 6) ) || 
+                     (2 <= r && r <= 4 && 2 <= c && c <= 4) ) {
+					this.modules[row + r][col + c] = true;
+				} else {
+					this.modules[row + r][col + c] = false;
+				}
+			}		
+		}		
+	},
+	
+	getBestMaskPattern : function() {
+	
+		var minLostPoint = 0;
+		var pattern = 0;
+	
+		for (var i = 0; i < 8; i++) {
+			
+			this.makeImpl(true, i);
+	
+			var lostPoint = QRUtil.getLostPoint(this);
+	
+			if (i === 0 || minLostPoint >  lostPoint) {
+				minLostPoint = lostPoint;
+				pattern = i;
+			}
+		}
+	
+		return pattern;
+	},
+	
+	createMovieClip : function(target_mc, instance_name, depth) {
+	
+		var qr_mc = target_mc.createEmptyMovieClip(instance_name, depth);
+		var cs = 1;
+	
+		this.make();
+
+		for (var row = 0; row < this.modules.length; row++) {
+			
+			var y = row * cs;
+			
+			for (var col = 0; col < this.modules[row].length; col++) {
+	
+				var x = col * cs;
+				var dark = this.modules[row][col];
+			
+				if (dark) {
+					qr_mc.beginFill(0, 100);
+					qr_mc.moveTo(x, y);
+					qr_mc.lineTo(x + cs, y);
+					qr_mc.lineTo(x + cs, y + cs);
+					qr_mc.lineTo(x, y + cs);
+					qr_mc.endFill();
+				}
+			}
+		}
+		
+		return qr_mc;
+	},
+
+	setupTimingPattern : function() {
+		
+		for (var r = 8; r < this.moduleCount - 8; r++) {
+			if (this.modules[r][6] !== null) {
+				continue;
+			}
+			this.modules[r][6] = (r % 2 === 0);
+		}
+	
+		for (var c = 8; c < this.moduleCount - 8; c++) {
+			if (this.modules[6][c] !== null) {
+				continue;
+			}
+			this.modules[6][c] = (c % 2 === 0);
+		}
+	},
+	
+	setupPositionAdjustPattern : function() {
+	
+		var pos = QRUtil.getPatternPosition(this.typeNumber);
+		
+		for (var i = 0; i < pos.length; i++) {
+		
+			for (var j = 0; j < pos.length; j++) {
+			
+				var row = pos[i];
+				var col = pos[j];
+				
+				if (this.modules[row][col] !== null) {
+					continue;
+				}
+				
+				for (var r = -2; r <= 2; r++) {
+				
+					for (var c = -2; c <= 2; c++) {
+					
+						if (Math.abs(r) === 2 || 
+                            Math.abs(c) === 2 ||
+                            (r === 0 && c === 0) ) {
+							this.modules[row + r][col + c] = true;
+						} else {
+							this.modules[row + r][col + c] = false;
+						}
+					}
+				}
+			}
+		}
+	},
+	
+	setupTypeNumber : function(test) {
+	
+		var bits = QRUtil.getBCHTypeNumber(this.typeNumber);
+        var mod;
+	
+		for (var i = 0; i < 18; i++) {
+			mod = (!test && ( (bits >> i) & 1) === 1);
+			this.modules[Math.floor(i / 3)][i % 3 + this.moduleCount - 8 - 3] = mod;
+		}
+	
+		for (var x = 0; x < 18; x++) {
+			mod = (!test && ( (bits >> x) & 1) === 1);
+			this.modules[x % 3 + this.moduleCount - 8 - 3][Math.floor(x / 3)] = mod;
+		}
+	},
+	
+	setupTypeInfo : function(test, maskPattern) {
+	
+		var data = (this.errorCorrectLevel << 3) | maskPattern;
+		var bits = QRUtil.getBCHTypeInfo(data);
+        var mod;
+	
+		// vertical		
+		for (var v = 0; v < 15; v++) {
+	
+			mod = (!test && ( (bits >> v) & 1) === 1);
+	
+			if (v < 6) {
+				this.modules[v][8] = mod;
+			} else if (v < 8) {
+				this.modules[v + 1][8] = mod;
+			} else {
+				this.modules[this.moduleCount - 15 + v][8] = mod;
+			}
+		}
+	
+		// horizontal
+		for (var h = 0; h < 15; h++) {
+	
+			mod = (!test && ( (bits >> h) & 1) === 1);
+			
+			if (h < 8) {
+				this.modules[8][this.moduleCount - h - 1] = mod;
+			} else if (h < 9) {
+				this.modules[8][15 - h - 1 + 1] = mod;
+			} else {
+				this.modules[8][15 - h - 1] = mod;
+			}
+		}
+	
+		// fixed module
+		this.modules[this.moduleCount - 8][8] = (!test);
+	
+	},
+	
+	mapData : function(data, maskPattern) {
+		
+		var inc = -1;
+		var row = this.moduleCount - 1;
+		var bitIndex = 7;
+		var byteIndex = 0;
+		
+		for (var col = this.moduleCount - 1; col > 0; col -= 2) {
+	
+			if (col === 6) col--;
+	
+			while (true) {
+	
+				for (var c = 0; c < 2; c++) {
+					
+					if (this.modules[row][col - c] === null) {
+						
+						var dark = false;
+	
+						if (byteIndex < data.length) {
+							dark = ( ( (data[byteIndex] >>> bitIndex) & 1) === 1);
+						}
+	
+						var mask = QRUtil.getMask(maskPattern, row, col - c);
+	
+						if (mask) {
+							dark = !dark;
+						}
+						
+						this.modules[row][col - c] = dark;
+						bitIndex--;
+	
+						if (bitIndex === -1) {
+							byteIndex++;
+							bitIndex = 7;
+						}
+					}
+				}
+								
+				row += inc;
+	
+				if (row < 0 || this.moduleCount <= row) {
+					row -= inc;
+					inc = -inc;
+					break;
+				}
+			}
+		}
+		
+	}
+
+};
+
+QRCode.PAD0 = 0xEC;
+QRCode.PAD1 = 0x11;
+
+QRCode.createData = function(typeNumber, errorCorrectLevel, dataList) {
+	
+	var rsBlocks = QRRSBlock.getRSBlocks(typeNumber, errorCorrectLevel);
+	
+	var buffer = new QRBitBuffer();
+	
+	for (var i = 0; i < dataList.length; i++) {
+		var data = dataList[i];
+		buffer.put(data.mode, 4);
+		buffer.put(data.getLength(), QRUtil.getLengthInBits(data.mode, typeNumber) );
+		data.write(buffer);
+	}
+
+	// calc num max data.
+	var totalDataCount = 0;
+	for (var x = 0; x < rsBlocks.length; x++) {
+		totalDataCount += rsBlocks[x].dataCount;
+	}
+
+	if (buffer.getLengthInBits() > totalDataCount * 8) {
+		throw new Error("code length overflow. (" + 
+            buffer.getLengthInBits() + 
+            ">" +  
+            totalDataCount * 8 + 
+            ")");
+	}
+
+	// end code
+	if (buffer.getLengthInBits() + 4 <= totalDataCount * 8) {
+		buffer.put(0, 4);
+	}
+
+	// padding
+	while (buffer.getLengthInBits() % 8 !== 0) {
+		buffer.putBit(false);
+	}
+
+	// padding
+	while (true) {
+		
+		if (buffer.getLengthInBits() >= totalDataCount * 8) {
+			break;
+		}
+		buffer.put(QRCode.PAD0, 8);
+		
+		if (buffer.getLengthInBits() >= totalDataCount * 8) {
+			break;
+		}
+		buffer.put(QRCode.PAD1, 8);
+	}
+
+	return QRCode.createBytes(buffer, rsBlocks);
+};
+
+QRCode.createBytes = function(buffer, rsBlocks) {
+
+	var offset = 0;
+	
+	var maxDcCount = 0;
+	var maxEcCount = 0;
+	
+	var dcdata = new Array(rsBlocks.length);
+	var ecdata = new Array(rsBlocks.length);
+	
+	for (var r = 0; r < rsBlocks.length; r++) {
+
+		var dcCount = rsBlocks[r].dataCount;
+		var ecCount = rsBlocks[r].totalCount - dcCount;
+
+		maxDcCount = Math.max(maxDcCount, dcCount);
+		maxEcCount = Math.max(maxEcCount, ecCount);
+		
+		dcdata[r] = new Array(dcCount);
+		
+		for (var i = 0; i < dcdata[r].length; i++) {
+			dcdata[r][i] = 0xff & buffer.buffer[i + offset];
+		}
+		offset += dcCount;
+		
+		var rsPoly = QRUtil.getErrorCorrectPolynomial(ecCount);
+		var rawPoly = new QRPolynomial(dcdata[r], rsPoly.getLength() - 1);
+
+		var modPoly = rawPoly.mod(rsPoly);
+		ecdata[r] = new Array(rsPoly.getLength() - 1);
+		for (var x = 0; x < ecdata[r].length; x++) {
+            var modIndex = x + modPoly.getLength() - ecdata[r].length;
+			ecdata[r][x] = (modIndex >= 0)? modPoly.get(modIndex) : 0;
+		}
+
+	}
+	
+	var totalCodeCount = 0;
+	for (var y = 0; y < rsBlocks.length; y++) {
+		totalCodeCount += rsBlocks[y].totalCount;
+	}
+
+	var data = new Array(totalCodeCount);
+	var index = 0;
+
+	for (var z = 0; z < maxDcCount; z++) {
+		for (var s = 0; s < rsBlocks.length; s++) {
+			if (z < dcdata[s].length) {
+				data[index++] = dcdata[s][z];
+			}
+		}
+	}
+
+	for (var xx = 0; xx < maxEcCount; xx++) {
+		for (var t = 0; t < rsBlocks.length; t++) {
+			if (xx < ecdata[t].length) {
+				data[index++] = ecdata[t][xx];
+			}
+		}
+	}
+
+	return data;
+
+};
+
+module.exports = QRCode;
+
+};
+return {QRCode:req('./index'),L:req('./QRErrorCorrectLevel')};})();
+</script>
+<script>
+"use strict";
+/* ============================================================
+   AMFE de mantenimiento · App para el aula
+   Una sola página, sin registro y sin servidor: todo se guarda en el
+   navegador. Licencia MIT.
+   ============================================================ */
+const VERSION = '1.2';
+const KEY = 'amfe-mant-v1', TKEY = 'amfe-mant-profe-v1';
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => Math.random().toString(36).slice(2, 9);
+const num = v => (v === '' || v == null || isNaN(+v)) ? null : +v;
+
+const STEPS = [
+  ['inicio', 'Inicio'],
+  ['mapa', '1 · Mapa del proceso'],
+  ['equipo', '2 · Equipo'],
+  ['criticos', '3 · Pasos críticos'],
+  ['amfe', '4–7 · Análisis AMFE'],
+  ['acciones', '8 · Acciones'],
+  ['entrega', 'Resumen y entrega']
+];
+const NODE_TYPES = {
+  entrada:   {name: 'Proveedor / entrada',  color: '#3A6FA3'},
+  proceso:   {name: 'Proceso / equipo',     color: '#1C2530'},
+  inspeccion:{name: 'Control / inspección', color: '#B04E17'},
+  almacen:   {name: 'Almacén / stock',      color: '#E57A35'},
+  transporte:{name: 'Transporte',           color: '#5A6470'},
+  salida:    {name: 'Cliente / salida',     color: '#1F4E7E'}
+};
+const ROLES = ['Coordinador', 'Mantenimiento mecánico', 'Mantenimiento eléctrico', 'Producción / operador', 'Calidad', 'Seguridad', 'Otro'];
+const CRITERIOS = ['Salud y seguridad', 'Calidad', 'Disponibilidad'];
+const TIPOS_ACC = ['Preventiva', 'Correctiva', 'De mejora'];
+const SCALES = {
+  G: {name: 'Gravedad', rows: [[9,10,'Catastrófico','Peligro para el operador o el equipo'],[6,8,'Grave','Pérdidas de producción o producto con costes importantes'],[3,5,'Moderado','Parte del producto se reprocesa o pérdidas leves'],[1,2,'Menor','Efecto leve o ninguno']]},
+  O: {name: 'Ocurrencia', rows: [[9,10,'Frecuente','Fallos persistentes'],[6,8,'Ocasional','Fallos de vez en cuando'],[3,5,'Infrecuente','Pocos fallos'],[1,2,'Remoto','Fallo improbable']]},
+  D: {name: 'Detección', rows: [[9,10,'Baja','Casi seguro que no se detecta'],[6,8,'Ocasional','Los controles no aseguran detectarlo'],[3,5,'Moderada','Los controles lo detectan casi siempre'],[1,2,'Alta','Es prácticamente imposible no detectarlo']]}
+};
+const catOf = (k, v) => { if (!v) return null; return SCALES[k].rows.find(r => v >= r[0] && v <= r[1]); };
+
+/* ---------- Casos de partida (se pueden ampliar) ---------- */
+const CASOS = {
+  A: {t: 'Cinta transportadora de una línea de embotellado', d: 'Una cinta de 25 m con motorreductor de 4 kW lleva las botellas de la llenadora a la etiquetadora. La línea produce 12.000 botellas por hora.',
+      f: [['Rotura de la banda por desgaste','Se para toda la línea hasta cambiar la banda (unas 4 h)','Unas 3 veces al año','En la ronda diaria el operario ve los cortes antes de que rompa'],
+          ['Sensor fotoeléctrico de presencia sucio','Las botellas se amontonan; algunas caen y se rompen','Varias veces por semana','Nadie lo ve hasta que las botellas ya han caído'],
+          ['Motorreductor sin lubricación','El motor puede quemarse: 2 días de parada y 3.000 € de reparación','Una vez en los últimos 5 años','Termografía mensual del motor'],
+          ['Rodillos desalineados','La banda se desvía y roza la estructura, sin parar la línea','Casi todas las semanas','El operario lo ve y lo oye enseguida']]},
+  B: {t: 'Compresor de aire comprimido de la planta', d: 'Un compresor de tornillo de 55 kW alimenta toda la planta a 7 bar: cilindros, electroválvulas y herramientas neumáticas.',
+      f: [['Fugas en racores y tuberías','Baja la presión y sube el consumo eléctrico; las máquinas siguen funcionando','Aparecen fugas nuevas cada semana','Con el ruido de la nave no se oyen; detector de ultrasonidos una vez al año'],
+          ['Purgador automático atascado','Entra agua en la red y se dañan cilindros y electroválvulas','Unas 4 veces al año','Ningún control: se descubre cuando fallan las electroválvulas'],
+          ['Aceite del compresor degradado','Puede gripar el tornillo y dejar toda la planta sin aire','Una vez en 8 años','Análisis de aceite cada 6 meses'],
+          ['Filtro de admisión colmatado','El compresor rinde algo menos y gasta más energía','Cada mes','Indicador de presión diferencial en el panel']]},
+  C: {t: 'Centro de mecanizado CNC', d: 'Mecaniza bridas de acero en lotes de 200 piezas. Cada pieza cuesta 45 € y el centro trabaja a dos turnos.',
+      f: [['Desgaste de la herramienta de corte','Piezas fuera de cota que hay que reprocesar o tirar','Varias veces por semana','Solo en el control final del lote'],
+          ['Fallo de la bomba de taladrina','La herramienta se calienta y puede romperse','Una vez al año','Una alarma de caudal para la máquina al momento'],
+          ['Holgura en los rodamientos del husillo','Se pierde precisión y se rechaza el lote entero','Dos veces en 10 años','Solo con el análisis de vibraciones anual'],
+          ['Enclavamiento de la puerta averiado','La máquina puede arrancar con la puerta abierta: riesgo para el operario','Nunca ha pasado','Prueba semanal del enclavamiento']]},
+  D: {t: 'Robot de paletizado al final de línea', d: 'Un robot de 4 ejes con ventosas monta palets de cajas de 12 kg. Cada palet lleva 60 cajas.',
+      f: [['Pérdida de vacío en una ventosa','Cae una caja y hay que reponerla a mano','Varias veces por semana','El vacuostato da alarma al instante'],
+          ['Cables del brazo desgastados','Paradas intermitentes muy difíciles de diagnosticar','Unas 5 veces al año','No hay inspección: parecen fallos aleatorios'],
+          ['Barrera fotoeléctrica de seguridad averiada','Una persona podría entrar en la celda con el robot en marcha','Nunca ha pasado','Test de la barrera al inicio de cada turno'],
+          ['Robot descalibrado tras un golpe','El mosaico del palet sale mal y hay que rehacerlo','Unas 2 veces al año','Se ve al flejar el palet']]},
+  E: {t: 'Inyectora de plástico', d: 'Inyectora de 250 t que fabrica carcasas de polipropileno con un molde de 4 cavidades, secador de granza y robot de extracción.',
+      f: []},
+  F: {t: 'Central hidráulica de una prensa', d: 'Grupo hidráulico con bomba de pistones, depósito de 200 l, filtro de retorno y válvula limitadora de presión, que acciona una prensa de 100 t.',
+      f: []},
+  G: {t: 'Línea de estampación con prensa transfer', d: 'Línea que estampa piezas de chapa a partir de bobina: devanadora, aplanadora, lubricadora y rodillo alimentador llevan la banda a una prensa transfer con un troquel de varios módulos. Las piezas salen por una cinta y un operario las coloca en su jaula. En el mapa de detalle de la prensa separad cada mini proceso con sus propios fallos.',
+      f: [['Bobina mal centrada en el mandrino','La banda entra torcida y se atasca en la aplanadora','Unas 2 veces al mes','El operario lo ve al enhebrar, si se fija'],
+          ['Rodillos de la aplanadora marcados','Marcas en todas las piezas del lote','Unas 3 veces al año','Solo en el control de calidad final'],
+          ['Lubricadora sin aceite','El troquel trabaja en seco: gripado y piezas rayadas','Una vez al mes','Indicador de nivel que nadie revisa'],
+          ['Rodillo alimentador que patina','Paso incorrecto: golpe en el troquel o pieza defectuosa','Varias veces por semana','Detector de paso del troquel que para la prensa'],
+          ['Pinza del transfer que no cierra','La pieza cae dentro del troquel: puede romperlo','Unas 5 veces al año','Sensor de presencia de pieza en las pinzas'],
+          ['Rotura de un punzón del troquel','Piezas sin agujero que llegan a montaje','Una vez cada 2 meses','Control visual del operario de la jaula'],
+          ['Atasco en la salida al conveyor','Las piezas se amontonan y se marcan','Varias veces por turno','El operario lo ve enseguida']], tpl: true},
+  libre: {t: 'Caso propio', d: '', f: []}
+};
+
+/* ---------- Ejemplo resuelto: bomba de refrigeración ---------- */
+function ejemplo() {
+  const n = (id, type, label, x, y, extra = {}) => Object.assign({id, type, label, x, y, datos: '', analizado: false, critico: false, criterio: '', just: ''}, extra);
+  return {
+    v: 1, app: 'amfe-mantenimiento',
+    meta: {grupo: 'Ejemplo resuelto', alumnos: 'Profesor', curso: '', caso: 'libre', casoTitulo: 'Bomba de refrigeración de una inyectora', casoDesc: 'Circuito cerrado de agua que refrigera el molde de una inyectora de plástico.', umbral: 100, creado: new Date().toISOString(), actualizado: ''},
+    mapa: {
+      nodes: [
+        n('n1','almacen','Depósito de agua',90,200,{datos:'500 l'}),
+        n('n2','proceso','Bomba centrífuga',290,200,{analizado:true,critico:true,criterio:'Disponibilidad',just:'Si falla se para la inyectora',datos:'5,5 kW · 20 m³/h'}),
+        n('n3','proceso','Filtro',490,200,{critico:true,criterio:'Calidad',just:'Si se obstruye baja el caudal y salen piezas con defectos'}),
+        n('n4','proceso','Circuito del molde',690,200),
+        n('n5','proceso','Torre de refrigeración',690,380),
+      ],
+      edges: [{id:'e1',from:'n1',to:'n2'},{id:'e2',from:'n2',to:'n3'},{id:'e3',from:'n3',to:'n4'},{id:'e4',from:'n4',to:'n5'},{id:'e5',from:'n5',to:'n1'}]
+    },
+    equipo: [{id:'m1',nombre:'Ana',rol:'Coordinador'},{id:'m2',nombre:'Luis',rol:'Mantenimiento mecánico'},{id:'m3',nombre:'Marta',rol:'Producción / operador'},{id:'m4',nombre:'Jorge',rol:'Calidad'}],
+    fallos: [
+      {id:'f1',paso:'n2',modo:'Fuga por el cierre mecánico',efecto:'Se para la inyectora',G:7,causa:'Desgaste; la bomba trabaja en seco',O:5,control:'Ninguno: se ve el charco cuando ya hay fuga',D:6,accion:'Sensor de nivel en el depósito y revisión de fugas en la ronda',tipo:'Preventiva',resp:'Luis',fecha:'2026-12-15',G2:7,O2:3,D2:3},
+      {id:'f2',paso:'n3',modo:'Filtro obstruido',efecto:'Baja el caudal: piezas con defectos',G:5,causa:'Suciedad en el agua',O:8,control:'Ninguno',D:7,accion:'Manómetro diferencial y limpieza semanal del filtro',tipo:'Preventiva',resp:'Marta',fecha:'2026-12-01',G2:5,O2:4,D2:2},
+      {id:'f3',paso:'n2',modo:'Rodamientos del motor dañados',efecto:'Ruido y posible gripado',G:8,causa:'Falta de engrase',O:2,control:'Engrase y termografía del plan preventivo',D:4,accion:'',tipo:'',resp:'',fecha:'',G2:null,O2:null,D2:null},
+      {id:'f4',paso:'n3',modo:'Junta de la tapa del filtro rota',efecto:'Pequeña fuga sin parar la máquina',G:3,causa:'Envejecimiento de la junta',O:4,control:'El operario la ve en la ronda',D:2,accion:'',tipo:'',resp:'',fecha:'',G2:null,O2:null,D2:null}
+    ]
+  };
+}
+
+/* ---------- Ejemplo resuelto 2: línea de estampación transfer (3 niveles) ---------- */
+function ejemploEstampacion() {
+  const n = (id, type, label, extra = {}) => Object.assign({id, type, label, x: 0, y: 0, datos: '', analizado: false, critico: false, criterio: '', just: ''}, extra);
+  const snake = ns => ns.forEach((o, i) => { const r = Math.floor(i / 4), c = r % 2 ? 3 - (i % 4) : i % 4; o.x = 110 + c * 210; o.y = 110 + r * 170; });
+  const chain = (ns, p) => ns.slice(1).map((b, i) => ({id: p + (i + 1), from: ns[i].id, to: b.id}));
+  // Nivel 3: dentro de la prensa transfer
+  const L3 = [
+    n('p1','proceso','Cizalla: corte de formato',{datos:'Formato 420 × 380 mm'}),
+    n('p2','transporte','Transfer a OP10',{datos:'Barras con garras neumáticas'}),
+    n('p3','proceso','OP10 · Embutición',{critico:true,criterio:'Calidad',just:'Es la operación más exigente: si la chapa agrieta aquí, la pieza no se puede recuperar',datos:'Cojín 120 t'}),
+    n('p4','proceso','OP20 · Reembutido y conformado'),
+    n('p5','proceso','OP30 · Recorte perimetral',{critico:true,criterio:'Disponibilidad',just:'Un retal atascado provoca doble golpe y puede romper el troquel (semanas de parada)'}),
+    n('p6','proceso','OP40 · Punzonado y calibrado',{datos:'6 agujeros Ø 8,5'}),
+    n('p7','transporte','Transfer a la cinta')
+  ];
+  snake(L3);
+  const E3 = chain(L3, 'q');
+  // Nivel 2: proceso de estampación
+  const L2 = [
+    n('s1','entrada','Devanadora (mandrino)',{datos:'Bobinas de hasta 10 t'}),
+    n('s2','proceso','Aplanadora',{datos:'7 rodillos'}),
+    n('s3','proceso','Lubricadora',{critico:true,criterio:'Calidad',just:'Sin aceite la OP10 agrieta las piezas y se desgasta el troquel'}),
+    n('s4','proceso','Alimentador de rodillos',{critico:true,criterio:'Disponibilidad',just:'Un paso incorrecto puede golpear el troquel'}),
+    n('s5','proceso','Prensa transfer',{analizado:true,critico:true,criterio:'Disponibilidad',just:'Única prensa para esta pieza: si se para, se para el montaje en 2 turnos',datos:'800 t · 4 OP',sub:{nodes:L3,edges:E3}}),
+    n('s6','transporte','Salida a la cinta'),
+    n('s7','inspeccion','Operario de jaula',{critico:true,criterio:'Salud y seguridad',just:'Manipula piezas con bordes cortantes 8 h por turno',datos:'Control 1 de cada 20'}),
+    n('s8','almacen','Jaula de piezas',{datos:'200 piezas por jaula'})
+  ];
+  snake(L2);
+  // Nivel 1: flujo de valor general
+  const L1 = [
+    n('t1','entrada','Proveedor de acero',{datos:'Bobinas DC04 · 1,5 mm'}),
+    n('t2','almacen','Almacén de bobinas',{datos:'Stock 3 días'}),
+    n('t3','proceso','Estampación',{analizado:true,critico:true,criterio:'Disponibilidad',just:'Cuello de botella de la planta (OEE 68 %): alimenta al montaje',sub:{nodes:L2,edges:chain(L2,'r')}}),
+    n('t4','almacen','Almacén de piezas estampadas',{datos:'Stock 2 turnos'}),
+    n('t5','proceso','Línea de ensamblaje',{datos:'Soldadura robotizada'}),
+    n('t6','almacen','Almacén de producto terminado',{datos:'Stock 1 día'}),
+    n('t7','salida','Envío al cliente',{datos:'Camión diario (JIT)'})
+  ];
+  [[110,110],[425,110],[740,110],[740,280],[530,280],[320,280],[110,280]].forEach(([x, y], i) => { L1[i].x = x; L1[i].y = y; });
+  const F = (id, paso, modo, efecto, G, causa, O, control, D, accion = '', tipo = '', resp = '', fecha = '', G2 = null, O2 = null, D2 = null) => ({id, paso, modo, efecto, G, causa, O, control, D, accion, tipo, resp, fecha, G2, O2, D2});
+  return {
+    v: 1, app: 'amfe-mantenimiento',
+    meta: {grupo: 'Ejemplo resuelto · Estampación', alumnos: 'Profesor', curso: '', caso: 'libre', casoTitulo: 'Línea de estampación transfer alimentada por bobina (4 operaciones)',
+      casoDesc: 'La planta fabrica un soporte de amortiguador de acero DC04 de 1,5 mm. El proveedor entrega bobinas que se guardan en el almacén; la línea de estampación (devanadora, aplanadora, lubricadora, alimentador y prensa transfer de 800 t con 4 operaciones) produce las piezas, que esperan en jaulas hasta la línea de ensamblaje. El producto terminado se almacena y se envía al cliente cada día. Ejemplo inventado para clase: los datos no son reales.',
+      umbral: 100, creado: new Date().toISOString(), actualizado: ''},
+    mapa: {nodes: L1, edges: chain(L1, 'e')},
+    equipo: [{id:'m1',nombre:'Sergio',rol:'Coordinador'},{id:'m2',nombre:'Lucía',rol:'Mantenimiento mecánico'},{id:'m3',nombre:'Iván',rol:'Mantenimiento eléctrico'},{id:'m4',nombre:'Rosa',rol:'Producción / operador'},{id:'m5',nombre:'Andrés',rol:'Calidad'},{id:'m6',nombre:'Elena',rol:'Seguridad'}],
+    fallos: [
+      F('x1','s1','Bobina mal centrada en el mandrino','La banda entra torcida, se atasca en la aplanadora y hay que volver a enhebrar (unos 40 min de parada)',6,'El mandrino no expande bien y no hay guías laterales',5,'Solo la vista del operario al enhebrar',6,'Guías laterales con referencia láser y lista de comprobación de enhebrado','De mejora','Rosa','2026-12-18',6,3,3),
+      F('x2','s1','Freno del mandrino desajustado','La bobina se desenrolla de golpe y la chapa forma un bucle: riesgo de corte para el operario',9,'Desgaste de las pastillas de freno',3,'Revisión del freno cada 6 meses',5,'Revisión mensual del freno y sensor de bucle que para la devanadora','Preventiva','Lucía','2026-12-11',9,2,3),
+      F('x3','s2','Rodillos de la aplanadora marcados','Marcas en todas las piezas de la bobina; el cliente puede rechazar el lote',7,'Cascarilla y partículas de óxido pegadas a los rodillos',4,'Solo en el control final del lote',7,'Limpieza de rodillos en cada cambio de bobina y control de la primera pieza','Preventiva','Rosa','2026-12-04',7,2,3),
+      F('x4','s3','Lubricadora sin aceite o con boquillas obstruidas','La OP10 embute en seco: piezas agrietadas y desgaste rápido del troquel',8,'No se rellena el depósito y el aceite sucio tapa las boquillas',5,'Visor de nivel que nadie revisa',7,'Sensor de nivel y de caudal enclavados con la prensa; filtro en la impulsión','De mejora','Iván','2027-01-15',8,4,2),
+      F('x5','s4','Los rodillos del alimentador patinan','Avance incorrecto de la banda: golpe en el troquel o pieza defectuosa',8,'Rodillos con aceite y presión de cierre baja',6,'Detector de paso del troquel que para la prensa',3,'Limpieza de rodillos y comprobación de la presión de cierre en cada turno','Preventiva','Lucía','2026-12-04',8,3,3),
+      F('x6','p1','Cuchilla de la cizalla desafilada','Rebaba en el formato que marca la pieza en la OP10',5,'Se afila solo cuando ya hay rebaba',5,'Inspección visual de la primera pieza del turno',5,'Afilado programado cada 80.000 golpes con el contador de la prensa','Preventiva','Lucía','2026-12-18',5,2,4),
+      F('x7','p2','Una garra del transfer no cierra','La pieza cae dentro de la OP10 y la prensa golpea dos chapas: puede romper el troquel',9,'Fuga en el cilindro neumático de la garra',4,'Sensor de presencia de pieza en las barras que para la prensa',3,'Revisión mensual de fugas neumáticas y cambio preventivo de juntas','Preventiva','Iván','2026-12-11',9,2,3),
+      F('x8','p3','Grietas en el radio de embutición','Piezas rechazadas; si llegan al montaje, la soldadura falla',7,'Presión del cojín mal ajustada después de un cambio de troquel',5,'Control visual del operario de 1 pieza de cada 20',6,'Registro de la presión del cojín con alarma y control de 1 de cada 10 durante la primera hora','De mejora','Andrés','2027-01-08',7,3,4),
+      F('x9','p4','Rayas por desgaste del punzón de reembutido','Piezas con rayas que el cliente acepta hasta cierto límite',4,'Desgaste normal del recubrimiento del punzón',4,'Control visual del operario de 1 pieza de cada 20',4),
+      F('x10','p5','Retal que no se evacúa','El retal se queda en el troquel y la prensa da doble golpe: rotura del troquel',8,'Rampa de retales obstruida',4,'Ninguno: se oye el golpe cuando ya ha pasado',8,'Sensor de presencia en la rampa de retales y soplado de aire en cada golpe','De mejora','Iván','2027-01-22',8,2,3),
+      F('x11','p6','Rotura de un punzón de la OP40','Piezas sin agujero que llegan a la línea de ensamblaje',7,'Fatiga: el punzón ha superado su vida útil',3,'Control visual en la jaula',7,'Detector de pieza en el troquel y cambio preventivo de punzones por número de golpes','Preventiva','Lucía','2027-01-15',7,2,2),
+      F('x12','s5','Falla la protección contra sobrecarga de la prensa','Una sobrecarga puede dañar el bastidor o la biela: meses de parada',10,'Válvula de sobrecarga hidráulica que no actúa',2,'Prueba anual de la válvula',4),
+      F('x13','s6','Atasco de piezas en la salida a la cinta','Las piezas se amontonan y se marcan entre sí',4,'Guías de la cinta desajustadas',7,'El operario lo ve enseguida',2),
+      F('x14','s7','Corte en las manos al coger las piezas','Lesión del operario',9,'Bordes con rebaba y guantes poco adecuados',3,'Uso obligatorio de guantes',5,'Guantes anticorte de nivel 5 y mesa de recogida a la altura de la cinta','Preventiva','Elena','2026-12-04',9,2,3)
+    ]
+  };
+}
+
+function plantilla(caso) {
+  const n = (type, label, x, y, extra = {}) => Object.assign({id: uid(), type, label, x, y, datos: '', analizado: false, critico: false, criterio: '', just: ''}, extra);
+  const chain = ns => ns.slice(1).map((b, i) => ({id: uid(), from: ns[i].id, to: b.id}));
+  if (caso !== 'G') return null;
+  const det = ['entrada:Devanadora (mandrino)','proceso:Aplanadora','proceso:Lubricadora','proceso:Rodillo alimentador','transporte:Transfer de entrada','proceso:Troquel · módulo 1 (embutición)','transporte:Transfer entre módulos','proceso:Troquel · módulos 2 a 4 (recorte y punzonado)','transporte:Salida de piezas al conveyor','inspeccion:Operario: pieza a la jaula','salida:Jaula de piezas'];
+  const sub = det.map((s, i) => { const k = s.indexOf(':'), ty = s.slice(0, k), lb = s.slice(k + 1); const r = Math.floor(i / 4), c = r % 2 ? 3 - (i % 4) : i % 4; return n(ty, lb, 110 + c * 210, 110 + r * 170); });
+  const prensa = n('proceso', 'Línea de prensa transfer', 320, 160, {analizado: true, datos: '800 t · 20 golpes/min', sub: {nodes: sub, edges: chain(sub)}});
+  const top = [n('almacen', 'Almacén de bobinas', 110, 160), prensa, n('almacen', 'Jaulas de piezas', 530, 160), n('salida', 'Montaje / cliente', 740, 160)];
+  return {nodes: top, edges: chain(top)};
+}
+function blank() {
+  return {v: 1, app: 'amfe-mantenimiento', meta: {grupo: '', alumnos: '', curso: '', caso: '', casoTitulo: '', casoDesc: '', umbral: 100, creado: new Date().toISOString(), actualizado: ''}, mapa: {nodes: [], edges: []}, equipo: [], fallos: []};
+}
+function newFallo(paso = '') { return {id: uid(), paso, modo: '', efecto: '', G: null, causa: '', O: null, control: '', D: null, accion: '', tipo: '', resp: '', fecha: '', G2: null, O2: null, D2: null}; }
+
+/* ---------- Estado y guardado ---------- */
+let S = load() || blank();
+let step = 'inicio';
+let sel = null;            // {kind:'node'|'edge', id}
+let connectMode = false, connectFrom = null;
+let drag = null;
+
+function load() { try { const t = localStorage.getItem(KEY); return t ? normalize(JSON.parse(t)) : null; } catch (e) { return null; } }
+function save() {
+  S.meta.actualizado = new Date().toISOString();
+  try { localStorage.setItem(KEY, JSON.stringify(S)); $('#saved').textContent = 'Guardado ' + new Date().toLocaleTimeString('es-ES', {hour: '2-digit', minute: '2-digit'}); }
+  catch (e) { $('#saved').textContent = 'No se puede guardar en este navegador'; }
+  renderWho(); renderSteps(); schedHist();
+}
+function normalize(d) {
+  const b = blank();
+  if (!d || typeof d !== 'object') return b;
+  d.meta = Object.assign(b.meta, d.meta || {});
+  d.mapa = d.mapa || {nodes: [], edges: []}; d.mapa.nodes = d.mapa.nodes || []; d.mapa.edges = d.mapa.edges || [];
+  d.equipo = d.equipo || []; d.fallos = (d.fallos || []).map(f => Object.assign(newFallo(), f));
+  walk(d.mapa, n => { if (n.sub) { n.sub.nodes = n.sub.nodes || []; n.sub.edges = n.sub.edges || []; } });
+  d.v = 1; d.app = 'amfe-mantenimiento';
+  return d;
+}
+const npr = f => (f.G && f.O && f.D) ? f.G * f.O * f.D : null;
+const npr2 = f => (f.G2 && f.O2 && f.D2) ? f.G2 * f.O2 * f.D2 : null;
+const nprClass = (v, u) => v == null ? '' : v >= Math.max(u * 2, 200) ? 'hi' : v >= u ? 'mid' : 'lo';
+function walk(map, cb, path = [], depth = 0) { ((map && map.nodes) || []).forEach(n => { cb(n, path, depth); if (n.sub) walk(n.sub, cb, path.concat(n), depth + 1); }); }
+function allNodes(d) { const out = []; walk(d.mapa, (n, path, depth) => out.push({n, path, depth})); return out; }
+function findNode(d, id) { let r = null; if (id) walk(d.mapa, (n, path) => { if (n.id === id) r = {n, path}; }); return r; }
+const nodeName = (d, id) => { const r = findNode(d, id); return r ? r.path.map(p => p.label).concat(r.n.label).join(' › ') : '—'; };
+function subIds(n) { const ids = [n.id]; if (n.sub) walk(n.sub, x => ids.push(x.id)); return ids; }
+let mapPath = [];
+function validPath() { let m = S.mapa; const ok = []; for (const id of mapPath) { const n = m.nodes.find(x => x.id === id); if (!n) break; n.sub = n.sub || {nodes: [], edges: []}; ok.push(id); m = n.sub; } mapPath = ok; return m; }
+const M = () => validPath();
+
+/* ---------- Comprobación de mínimos (los 8 pasos) ---------- */
+function checks(d) {
+  const N = d.mapa.nodes, E = d.mapa.edges, F = d.fallos, U = d.meta.umbral || 100, out = [];
+  const st = (ok, part) => ok ? 'ok' : part ? 'part' : 'no';
+  // 1 mapa
+  const AN = allNodes(d).map(x => x.n), nSub = AN.filter(n => n.sub && n.sub.nodes.length).length;
+  const nN = N.length, anal = AN.some(n => n.analizado), con = nN > 1 && E.length >= nN - 1;
+  out.push({k: 'mapa', t: 'Mapa del proceso', s: st(nN >= 4 && nN <= 8 && anal && con, nN >= 2),
+    d: `${nN} bloques en el mapa general (mínimo 4, máximo recomendado 8) · ${E.length} flechas · equipo analizado ${anal ? 'marcado' : 'sin marcar'}${nSub ? ' · ' + nSub + (nSub > 1 ? ' mapas' : ' mapa') + ' de detalle' : ''}`});
+  // 2 equipo
+  const miembros = d.equipo.filter(m => m.nombre.trim()), coord = miembros.some(m => m.rol === 'Coordinador');
+  out.push({k: 'equipo', t: 'Equipo de trabajo', s: st(miembros.length >= 2 && coord, miembros.length >= 1),
+    d: `${miembros.length} miembros · coordinador ${coord ? 'asignado' : 'sin asignar'}`});
+  // 3 críticos
+  const cr = AN.filter(n => n.critico), crOk = cr.filter(n => n.criterio && n.just.trim());
+  out.push({k: 'criticos', t: 'Pasos críticos', s: st(cr.length >= 2 && crOk.length === cr.length, cr.length >= 1),
+    d: `${cr.length} pasos críticos (2 o 3 por mapa) · ${crOk.length} con criterio y justificación`});
+  // 4 fallos, efectos y G
+  const f4 = F.filter(f => f.modo.trim() && f.efecto.trim() && f.G);
+  out.push({k: 'fallos', t: 'Fallos, efectos y gravedad', s: st(f4.length >= 4 && f4.length === F.length, f4.length >= 1),
+    d: `${f4.length} de ${F.length} fallos con modo, efecto y G (mínimo 4)`});
+  // 5 causas y O
+  const f5 = F.filter(f => f.causa.trim() && f.O);
+  out.push({k: 'causas', t: 'Causas y ocurrencia', s: st(F.length >= 1 && f5.length === F.length, f5.length >= 1),
+    d: `${f5.length} de ${F.length} fallos con causa y O`});
+  // 6 detección
+  const f6 = F.filter(f => f.control.trim() && f.D);
+  out.push({k: 'deteccion', t: 'Detección', s: st(F.length >= 1 && f6.length === F.length, f6.length >= 1),
+    d: `${f6.length} de ${F.length} fallos con control actual y D`});
+  // 7 NPR
+  const f7 = F.filter(f => npr(f) != null && f.paso);
+  out.push({k: 'npr', t: 'NPR y decisión', s: st(F.length >= 4 && f7.length === F.length, f7.length >= 1),
+    d: `${f7.length} de ${F.length} fallos con NPR y paso asignado · umbral ${U}`});
+  // 8 acciones
+  const need = F.filter(f => (npr(f) || 0) >= U);
+  const done = need.filter(f => f.accion.trim() && f.resp.trim() && f.fecha && npr2(f) != null && npr2(f) < npr(f));
+  out.push({k: 'acciones', t: 'Acciones y nuevo NPR', s: need.length ? st(done.length === need.length, done.length >= 1) : (F.length >= 4 && f7.length === F.length ? 'ok' : 'no'),
+    d: need.length ? `${done.length} de ${need.length} fallos con NPR ≥ ${U} con acción, responsable, fecha y NPR(2) menor` : 'Ningún fallo supera el umbral'});
+  return out;
+}
+
+/* ---------- Cabecera y navegación ---------- */
+function renderWho() {
+  const m = S.meta; const caso = m.caso === 'libre' ? m.casoTitulo : (CASOS[m.caso] || {}).t;
+  $('#who').textContent = [m.grupo || 'Sin nombre de grupo', caso].filter(Boolean).join(' · ');
+}
+function renderSteps() {
+  const ck = checks(S); const map = {mapa: 'mapa', equipo: 'equipo', criticos: 'criticos', amfe: ['fallos','causas','deteccion','npr'], acciones: 'acciones'};
+  $('#steps').innerHTML = STEPS.map(([k, t]) => {
+    let dot = '';
+    if (map[k]) { const ks = [].concat(map[k]); const ss = ks.map(x => ck.find(c => c.k === x).s); const s = ss.every(x => x === 'ok') ? 'ok' : ss.some(x => x !== 'no') ? 'part' : ''; dot = `<span class="dot ${s}"></span>`; }
+    return `<button data-step="${k}" class="${k === step ? 'cur' : ''}">${dot}${esc(t)}</button>`;
+  }).join('');
+}
+$('#steps').addEventListener('click', e => { const b = e.target.closest('[data-step]'); if (b) go(b.dataset.step); });
+function go(k) { if (k !== 'mapa') mapPath = []; step = k; sel = null; connectMode = false; connectFrom = null; render(); window.scrollTo(0, 0); }
+function render() {
+  renderWho(); renderSteps();
+  const f = {inicio: rInicio, mapa: rMapa, equipo: rEquipo, criticos: rCriticos, amfe: rAmfe, acciones: rAcciones, entrega: rEntrega}[step];
+  $('#main').innerHTML = ''; f($('#main'));
+}
+const nav = (prev, next) => `<div class="row" style="justify-content:space-between;margin-top:18px">${prev ? `<button data-go="${prev}">← Anterior</button>` : '<span></span>'}${next ? `<button class="pri" data-go="${next}">Siguiente →</button>` : ''}</div>`;
+document.addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (b && !b.closest('#teacher')) go(b.dataset.go); });
+
+function casoBox(open = false) {
+  const m = S.meta; const c = m.caso === 'libre' ? {t: m.casoTitulo, d: m.casoDesc, f: []} : CASOS[m.caso];
+  if (!c || !c.t) return '';
+  return `<details class="caso card" ${open ? 'open' : ''}><summary>Caso: ${esc(c.t)}</summary><p>${esc(c.d)}</p>${c.f && c.f.length ? `<table><tr><th>Fallo posible</th><th>Qué pasa si ocurre</th><th>Con qué frecuencia</th><th>Cómo se detecta hoy</th></tr>${c.f.map(r => `<tr>${r.map(x => `<td>${esc(x)}</td>`).join('')}</tr>`).join('')}</table>` : ''}</details>`;
+}
+
+/* ---------- Paso 0 · Inicio ---------- */
+function rInicio(el) {
+  const m = S.meta;
+  el.innerHTML = `
+  <div class="head"><div><p class="kick">AMFE de mantenimiento</p><h2>Datos del grupo y del caso</h2></div>
+    <div class="row"><button id="bEj">Cargar ejemplo resuelto</button><button id="bOpen">Abrir informe guardado</button><button id="bCode">Pegar código</button><button class="danger" id="bNew">Empezar de cero</button></div><p class="small muted" style="margin:8px 0 0">¿Venís de otro ordenador? Pulsad «Abrir informe guardado» y elegid el .html que descargasteis con «Guardar». El trabajo también se guarda solo en este navegador.</p></div>
+  <div class="grid2">
+    <div class="card stack">
+      <div><label>Nombre del grupo</label><input id="iGrupo" value="${esc(m.grupo)}" placeholder="Por ejemplo: Grupo 2 · Turno de mañana"></div>
+      <div><label>Alumnos (uno por línea)</label><textarea id="iAlum" rows="4">${esc(m.alumnos)}</textarea></div>
+      <div class="grid2"><div><label>Curso o grupo de clase</label><input id="iCurso" value="${esc(m.curso)}" placeholder="CE Digitalización del Mantenimiento"></div>
+      <div><label>Umbral de NPR para actuar</label><input id="iUmb" type="number" min="1" max="1000" value="${esc(m.umbral)}"></div></div>
+    </div>
+    <div class="card stack">
+      <div><label>Caso que vais a analizar</label><select id="iCaso"><option value="">Elige un caso…</option>${Object.entries(CASOS).map(([k, c]) => `<option value="${k}" ${m.caso === k ? 'selected' : ''}>${k === 'libre' ? 'Caso propio' : 'Caso ' + k + ' · ' + esc(c.t)}</option>`).join('')}</select></div>
+      <div id="libre" ${m.caso === 'libre' ? '' : 'hidden'} class="stack"><div><label>Título del caso propio</label><input id="iCT" value="${esc(m.casoTitulo)}"></div><div><label>Descripción</label><textarea id="iCD">${esc(m.casoDesc)}</textarea></div></div>
+      <div id="casoInfo"></div>
+    </div>
+  </div>
+  <div class="hint" style="margin-top:16px"><b>Cómo funciona.</b> Recorred los pasos de arriba en orden: mapa del proceso, equipo, pasos críticos, análisis AMFE y acciones. Todo se guarda solo en este navegador. Al terminar, en <b>Resumen y entrega</b> descargad el archivo y subidlo a la tarea de Classroom. Si cambiáis de ordenador, abrid ese archivo aquí para seguir.</div>
+  ${nav(null, 'mapa')}`;
+  const upd = () => { $('#casoInfo').innerHTML = S.meta.caso && S.meta.caso !== 'libre' ? `<p class="small muted">${esc(CASOS[S.meta.caso].d)}</p>` : ''; };
+  upd();
+  $('#iGrupo').oninput = e => { m.grupo = e.target.value; save(); };
+  $('#iAlum').oninput = e => { m.alumnos = e.target.value; save(); };
+  $('#iCurso').oninput = e => { m.curso = e.target.value; save(); };
+  $('#iUmb').oninput = e => { m.umbral = num(e.target.value) || 100; save(); };
+  $('#iCaso').onchange = e => { m.caso = e.target.value; $('#libre').hidden = m.caso !== 'libre'; upd(); save(); };
+  const ct = $('#iCT'), cd = $('#iCD'); ct.oninput = e => { m.casoTitulo = e.target.value; save(); }; cd.oninput = e => { m.casoDesc = e.target.value; save(); };
+  $('#bEj').onclick = () => modal(`<h3>Cargar un ejemplo resuelto</h3><p>Se sustituirá lo que tenéis ahora en este navegador. Si queréis conservarlo, pulsad antes «Guardar».</p>
+    <div class="stack" style="gap:8px"><button class="pri" id="ej1">Bomba de refrigeración de una inyectora · 1 nivel, 4 fallos</button><button class="pri" id="ej2">Línea de estampación transfer (4 operaciones) · 3 niveles, 14 fallos</button></div>
+    <div class="row" style="justify-content:flex-end;margin-top:10px"><button data-close>Cancelar</button></div>`, m => {
+    const go = f => { closeModal(); S = normalize(f()); mapPath = []; fFilter = ''; save(); render(); toast('Ejemplo cargado'); };
+    $('#ej1', m).onclick = () => go(ejemplo); $('#ej2', m).onclick = () => go(ejemploEstampacion); });
+  $('#bNew').onclick = () => ask('Se borrará todo el AMFE de este navegador. ¿Seguro?', () => { S = blank(); applyParams(); mapPath = []; fFilter = ''; save(); render(); });
+  $('#bOpen').onclick = () => pickFiles(false, async files => { try { const d = await readEntrega(files[0]); S = normalize(d); save(); render(); toast('Entrega abierta'); } catch (err) { toast('No se ha podido abrir: ' + err.message); } });
+  $('#bCode').onclick = () => modal(`<h3>Pegar código de entrega</h3><textarea id="mc" rows="6" placeholder="AMFE1...."></textarea><div class="row" style="justify-content:flex-end"><button data-close>Cancelar</button><button class="pri" id="mcOk">Abrir</button></div>`, box => {
+    $('#mcOk', box).onclick = async () => { try { const d = await decode($('#mc', box).value.trim()); S = normalize(d); save(); closeModal(); render(); toast('Código abierto'); } catch (err) { toast('Código no válido'); } };
+  });
+}
+
+/* ---------- Paso 1 · Mapa del proceso ---------- */
+const NW = 150, NH = 70, VBW = 860, VBH = 420;
+function shapeSVG(n, color) {
+  const w = NW, h = NH, x = -w / 2, y = -h / 2;
+  switch (n.type) {
+    case 'entrada': case 'salida':
+      return `<path class="shape" d="M${x},${y + h} V${y + 18} L${x + 30},${y} V${y + 18} L${x + 60},${y} V${y + 18} L${x + 90},${y} V${y + 18} L${x + w},${y + 18} V${y + h} Z" fill="#fff" stroke="${color}" stroke-width="2.5"/>`;
+    case 'almacen':
+      return `<path class="shape" d="M0,${y - 4} L${x + 20},${y + h + 4} L${-x - 20},${y + h + 4} Z" fill="#fff" stroke="${color}" stroke-width="2.5"/><text x="0" y="${y + 34}" text-anchor="middle" font-size="22" font-weight="800" fill="${color}">I</text>`;
+    case 'inspeccion':
+      return `<path class="shape" d="M0,${y - 6} L${-x + 4},0 L0,${-y + 6} L${x - 4},0 Z" fill="#fff" stroke="${color}" stroke-width="2.5"/>`;
+    case 'transporte':
+      return `<path class="shape" d="M${x},${y + 14} H${x + w - 34} V${y} L${-x},0 L${x + w - 34},${-y} V${-y - 14} H${x} Z" fill="#fff" stroke="${color}" stroke-width="2.5"/>`;
+    default:
+      return `<rect class="shape" x="${x}" y="${y}" width="${w}" height="${h}" rx="6" fill="#fff" stroke="${color}" stroke-width="2.5"/><rect x="${x}" y="${y}" width="${w}" height="16" rx="6" fill="${color}"/><rect x="${x}" y="${y + 8}" width="${w}" height="8" fill="${color}"/>`;
+  }
+}
+function wrapText(t, max = 18) {
+  const words = String(t || '').split(/\s+/); const lines = []; let cur = '';
+  words.forEach(w => { if ((cur + ' ' + w).trim().length > max && cur) { lines.push(cur); cur = w; } else cur = (cur + ' ' + w).trim(); });
+  if (cur) lines.push(cur); return lines.slice(0, 3);
+}
+function edgePts(a, b) {
+  const dx = b.x - a.x, dy = b.y - a.y; if (!dx && !dy) return null;
+  const clip = (dx, dy) => { const sx = (NW / 2 + 6) / Math.abs(dx || 1e-9), sy = (NH / 2 + 8) / Math.abs(dy || 1e-9); const s = Math.min(sx, sy); return [dx * s, dy * s]; };
+  const [ax, ay] = clip(dx, dy), [bx, by] = clip(-dx, -dy);
+  return [a.x + ax, a.y + ay, b.x + bx, b.y + by];
+}
+function mapSVG(map, editable) {
+  const mk = 'arr' + uid(), gp = 'grid' + uid();
+  const N = map.nodes, byId = Object.fromEntries(N.map(n => [n.id, n]));
+  const maxX = Math.max(VBW, ...N.map(n => n.x + NW / 2 + 30)), maxY = Math.max(VBH, ...N.map(n => n.y + NH / 2 + 50));
+  const tight = !editable && N.length, x0 = tight ? Math.min(...N.map(n => n.x)) - NW / 2 - 30 : 0, y0 = tight ? Math.min(...N.map(n => n.y)) - NH / 2 - 30 : 0;
+  const vw = tight ? Math.max(...N.map(n => n.x)) + NW / 2 + 30 - x0 : maxX, vh = tight ? Math.max(...N.map(n => n.y)) + NH / 2 + 60 - y0 : maxY;
+  let s = `<svg viewBox="${x0} ${y0} ${vw} ${vh}" xmlns="http://www.w3.org/2000/svg" id="${editable ? 'mapSvg' : ''}" role="img" aria-label="Mapa del proceso">
+  <defs><marker id="${mk}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1C2530"/></marker>
+  <pattern id="${gp}" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M20 0 L0 0 0 20" fill="none" stroke="#EEEAE2" stroke-width="1"/></pattern></defs>
+  <rect class="bg" x="${x0}" y="${y0}" width="${vw}" height="${vh}" fill="${editable ? 'url(#' + gp + ')' : '#fff'}"/>`;
+  map.edges.forEach(e => { const a = byId[e.from], b = byId[e.to]; if (!a || !b) return; const p = edgePts(a, b); if (!p) return;
+    const isSel = editable && sel && sel.kind === 'edge' && sel.id === e.id;
+    s += `<g class="edge ${isSel ? 'sel' : ''}" data-edge="${e.id}"><line x1="${p[0]}" y1="${p[1]}" x2="${p[2]}" y2="${p[3]}" stroke="transparent" stroke-width="16"/><line x1="${p[0]}" y1="${p[1]}" x2="${p[2]}" y2="${p[3]}" stroke="${isSel ? '#E57A35' : '#1C2530'}" stroke-width="2.5" marker-end="url(#${mk})"/></g>`; });
+  N.forEach(n => {
+    const t = NODE_TYPES[n.type] || NODE_TYPES.proceso, isSel = editable && sel && sel.kind === 'node' && sel.id === n.id, from = connectFrom === n.id;
+    const lines = wrapText(n.label || t.name);
+    const ty = n.type === 'almacen' ? 30 : n.type === 'proceso' ? 4 : n.type === 'entrada' || n.type === 'salida' ? 14 : 0;
+    s += `<g class="node ${isSel || from ? 'sel' : ''}" data-node="${n.id}" transform="translate(${n.x},${n.y})">${shapeSVG(n, t.color)}`;
+    if (n.type === 'almacen') s += `<text x="0" y="${NH / 2 + 22}" text-anchor="middle" font-size="14" font-weight="600" fill="#1C2530">${lines.map((l, i) => `<tspan x="0" dy="${i ? 15 : 0}">${esc(l)}</tspan>`).join('')}</text>`;
+    else s += `<text x="0" y="${ty - (lines.length - 1) * 7.5 + 5}" text-anchor="middle" font-size="14" font-weight="600" fill="#1C2530">${lines.map((l, i) => `<tspan x="0" dy="${i ? 15 : 0}">${esc(l)}</tspan>`).join('')}</text>`;
+    if (n.analizado) s += `<g transform="translate(${NW / 2 - 8},${-NH / 2 - 8})"><circle r="11" fill="#1F4E7E"/><text y="4" text-anchor="middle" font-size="12" font-weight="800" fill="#fff">EA</text></g>`;
+    if (n.critico) s += `<g transform="translate(${-NW / 2 + 8},${-NH / 2 - 8})"><path d="M0,-12 L12,9 L-12,9 Z" fill="#E57A35"/><text y="6" text-anchor="middle" font-size="12" font-weight="900" fill="#1C2530">!</text></g>`;
+    if (n.sub && n.sub.nodes.length) s += `<g transform="translate(${NW / 2 - 14},${NH / 2 + 2})"><rect x="-26" y="-11" width="52" height="22" rx="11" fill="#3A6FA3"/><text y="4" text-anchor="middle" font-size="12" font-weight="800" fill="#fff">⊞ ${n.sub.nodes.length}</text></g>`;
+    if (n.datos) s += `<text x="0" y="${NH / 2 + (n.type === 'almacen' ? 54 : 18)}" text-anchor="middle" font-size="11" fill="#5A6470">${esc(String(n.datos).slice(0, 30))}</text>`;
+    s += `</g>`;
+  });
+  if (!N.length && editable) s += `<text x="${VBW / 2}" y="${VBH / 2}" text-anchor="middle" font-size="18" fill="#8A929B">Añadid bloques con los botones de la izquierda</text>`;
+  return s + `</svg>`;
+}
+function mapsBlock(d, h = 300) {
+  const out = [`<div class="mapbox" style="border:1px solid #DDD8CE;height:${h}px;background:#fff">${mapSVG(d.mapa, false)}</div>`];
+  walk(d.mapa, (n, path) => { if (n.sub && n.sub.nodes.length) out.push(`<p style="margin:10px 0 4px;font-weight:700">Detalle de: ${esc(path.map(p => p.label).concat(n.label).join(' › '))}</p><div class="mapbox" style="border:1px solid #DDD8CE;height:${h}px;background:#fff">${mapSVG(n.sub, false)}</div>`); });
+  return out.join('');
+}
+function rMapa(el) {
+  el.innerHTML = `
+  <div class="head"><div><p class="kick">Paso 1</p><h2>Mapa del proceso</h2></div><div class="row small muted">EA = equipo analizado · ! = paso crítico · ⊞ = tiene mapa de detalle${(CASOS[S.meta.caso] || {}).tpl ? ' <button id="bTpl">Cargar plantilla del caso</button>' : ''}</div></div>
+  ${casoBox()}
+  <div class="crumbs" id="crumbs"></div>
+  <div class="mapwrap">
+    <div class="palette card">
+      <label>Añadir bloque</label>
+      ${Object.entries(NODE_TYPES).map(([k, t]) => `<button data-add="${k}"><span class="sw" style="background:${t.color}"></span>${t.name}</button>`).join('')}
+      <label style="margin-top:8px">Herramientas</label>
+      <button id="bCon" class="${connectMode ? 'on' : ''}">↗ Conectar con flecha</button>
+      <button id="bAuto">⇢ Ordenar en línea</button>
+      <button id="bDel" class="danger">✕ Borrar selección</button>
+    </div>
+    <div class="canvas ${connectMode ? 'connect' : ''}" id="canvas">${mapSVG(M(), true)}</div>
+    <div class="props card" id="props"></div>
+  </div>
+  <div class="min" style="margin-top:14px"><b>Mínimo:</b><ul><li>De 4 a 8 bloques, desde la entrada hasta la salida, unidos con flechas.</li><li>Marcad cuál es el <b>equipo analizado</b> y qué pasos son <b>críticos</b>.</li><li>Arrastrad los bloques para colocarlos; con «Conectar» pulsad primero el bloque de origen y luego el de destino.</li><li><b>Mapa de detalle:</b> si un proceso tiene varias partes (por ejemplo, una prensa con devanadora, aplanadora, alimentador y troquel), selecciónalo y pulsa «Crear mapa de detalle» o haz doble clic. Cada mini proceso puede tener sus propios fallos.</li></ul></div>
+  ${nav('inicio', 'equipo')}`;
+  $$('[data-add]', el).forEach(b => b.onclick = () => {
+    const i = M().nodes.length; const n = {id: uid(), type: b.dataset.add, label: NODE_TYPES[b.dataset.add].name, x: 110 + (i % 4) * 210, y: 110 + Math.floor(i / 4) * 170, datos: '', analizado: false, critico: false, criterio: '', just: ''};
+    M().nodes.push(n); sel = {kind: 'node', id: n.id}; save(); redrawMap(); renderProps(); setTimeout(() => { const i = $('#pLabel'); if (i) { i.focus(); i.select(); } }, 0);
+  });
+  $('#bCon').onclick = () => { connectMode = !connectMode; connectFrom = null; $('#bCon').classList.toggle('on', connectMode); $('#canvas').classList.toggle('connect', connectMode); toast(connectMode ? 'Pulsa el bloque de origen y luego el de destino' : 'Modo conectar desactivado'); redrawMap(); };
+  $('#bAuto').onclick = () => { autoLayout(); save(); redrawMap(); };
+  $('#bDel').onclick = delSel;
+  const bt = $('#bTpl'); if (bt) bt.onclick = () => ask('Se sustituirá el mapa actual por la plantilla del caso, con el mapa general y el detalle de la prensa. Los fallos que ya tengáis se conservan, pero perderán el paso asignado. ¿Seguir?', () => { S.mapa = plantilla(S.meta.caso); S.fallos.forEach(f => f.paso = ''); mapPath = []; sel = null; save(); render(); });
+  bindCanvas(); renderProps(); renderCrumbs();
+}
+function renderCrumbs() {
+  const c = $('#crumbs'); if (!c) return; M();
+  const parts = [['', 'Mapa general']]; let m = S.mapa; mapPath.forEach(id => { const n = m.nodes.find(x => x.id === id); parts.push([id, n.label]); m = n.sub; });
+  c.innerHTML = parts.length === 1 ? '<span class="muted small">Estás en el mapa general.</span>' : '<span class="small muted">Nivel:</span> ' + parts.map(([id, l], i) => i === parts.length - 1 ? `<span class="cur">${esc(l)}</span>` : `<button data-lvl="${i}">${esc(l)}</button> ›`).join(' ');
+  $$('[data-lvl]', c).forEach(b => b.onclick = () => { mapPath = mapPath.slice(0, +b.dataset.lvl); sel = null; connectFrom = null; render(); });
+}
+function openDetail(id) { const n = M().nodes.find(x => x.id === id); if (!n) return; n.sub = n.sub || {nodes: [], edges: []}; mapPath.push(id); sel = null; connectFrom = null; save(); render(); toast('Mapa de detalle de «' + n.label + '». Usa la barra de nivel para volver.'); }
+function redrawMap() { const c = $('#canvas'); if (!c) return; c.innerHTML = mapSVG(M(), true); }
+function svgPt(evt) { const svg = $('#mapSvg'); const p = svg.createSVGPoint(); p.x = evt.clientX; p.y = evt.clientY; return p.matrixTransform(svg.getScreenCTM().inverse()); }
+let lastDown = {};
+function bindCanvas() {
+  const c = $('#canvas');
+  c.addEventListener('pointerdown', e => {
+    const g = e.target.closest('[data-node]'), ed = e.target.closest('[data-edge]');
+    if (g) {
+      const id = g.dataset.node;
+      if (connectMode) {
+        if (!connectFrom) { connectFrom = id; redrawMap(); return; }
+        if (connectFrom !== id && !M().edges.some(x => x.from === connectFrom && x.to === id)) { M().edges.push({id: uid(), from: connectFrom, to: id}); save(); }
+        connectFrom = null; redrawMap(); return;
+      }
+      const now = Date.now(); if (lastDown.id === id && now - lastDown.t < 450) { lastDown = {}; drag = null; openDetail(id); return; } lastDown = {id, t: now};
+      const n = M().nodes.find(x => x.id === id), p = svgPt(e);
+      drag = {id, dx: p.x - n.x, dy: p.y - n.y, moved: false}; sel = {kind: 'node', id};
+      c.setPointerCapture(e.pointerId); redrawMap(); renderProps(); return;
+    }
+    if (ed) { sel = {kind: 'edge', id: ed.dataset.edge}; redrawMap(); renderProps(); return; }
+    sel = null; connectFrom = null; redrawMap(); renderProps();
+  });
+  c.addEventListener('dblclick', e => { const g = e.target.closest('[data-node]'); if (g && !connectMode) openDetail(g.dataset.node); });
+  c.addEventListener('pointermove', e => { if (!drag) return; const n = M().nodes.find(x => x.id === drag.id), p = svgPt(e); n.x = Math.max(NW / 2, Math.round((p.x - drag.dx) / 10) * 10); n.y = Math.max(NH / 2 + 12, Math.round((p.y - drag.dy) / 10) * 10); drag.moved = true; redrawMap(); });
+  const end = () => { if (drag) { if (drag.moved) save(); drag = null; } };
+  c.addEventListener('pointerup', end); c.addEventListener('pointercancel', end);
+}
+function autoLayout() {
+  const N = M().nodes; if (!N.length) return;
+  const indeg = {}; N.forEach(n => indeg[n.id] = 0); M().edges.forEach(e => { if (indeg[e.to] != null) indeg[e.to]++; });
+  const order = [], seen = new Set(); const starts = N.filter(n => !indeg[n.id]); const q = (starts.length ? starts : [N[0]]).map(n => n.id);
+  while (q.length) { const id = q.shift(); if (seen.has(id)) continue; seen.add(id); order.push(id); M().edges.filter(e => e.from === id).forEach(e => q.push(e.to)); }
+  N.forEach(n => { if (!seen.has(n.id)) order.push(n.id); });
+  order.forEach((id, i) => { const n = N.find(x => x.id === id), r = Math.floor(i / 4), c = r % 2 ? 3 - (i % 4) : i % 4; n.x = 110 + c * 210; n.y = 110 + r * 170; });
+}
+function delSel() {
+  if (!sel) return toast('Selecciona primero un bloque o una flecha');
+  if (sel.kind === 'node') { const m = M(), node = m.nodes.find(n => n.id === sel.id); if (!node) return;
+    const doIt = () => { const ids = subIds(node); m.nodes = m.nodes.filter(n => n.id !== node.id); m.edges = m.edges.filter(e => e.from !== node.id && e.to !== node.id); S.fallos.forEach(f => { if (ids.includes(f.paso)) f.paso = ''; }); sel = null; save(); redrawMap(); renderProps(); };
+    if (node.sub && node.sub.nodes.length) return ask(`El bloque «${node.label}» tiene un mapa de detalle con ${node.sub.nodes.length} pasos. Se borrará todo. ¿Seguir?`, doIt);
+    return doIt(); }
+  else M().edges = M().edges.filter(e => e.id !== sel.id);
+  sel = null; save(); redrawMap(); renderProps();
+}
+document.addEventListener('keydown', e => { if (step === 'mapa' && (e.key === 'Delete' || e.key === 'Backspace') && sel && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName) && $('#teacher').hidden) { e.preventDefault(); delSel(); } });
+function renderProps() {
+  const p = $('#props'); if (!p) return;
+  if (!sel) { p.innerHTML = `<h3>Propiedades</h3><p class="small muted">Pulsa un bloque para editar su nombre, sus datos y si es el equipo analizado o un paso crítico. Pulsa una flecha para borrarla o invertirla.</p><p class="small muted">Tipos de bloque al estilo de un mapa de flujo de valor (VSM): proveedor, proceso, control, almacén, transporte y cliente.</p>`; return; }
+  if (sel.kind === 'edge') {
+    const e = M().edges.find(x => x.id === sel.id); if (!e) { sel = null; return renderProps(); }
+    p.innerHTML = `<h3>Flecha</h3><p>${esc(nodeName(S, e.from))} → ${esc(nodeName(S, e.to))}</p><div class="row"><button id="eInv">⇄ Invertir</button><button class="danger" id="eDel">Borrar</button></div>`;
+    $('#eInv').onclick = () => { [e.from, e.to] = [e.to, e.from]; save(); redrawMap(); renderProps(); };
+    $('#eDel').onclick = delSel; return;
+  }
+  const n = M().nodes.find(x => x.id === sel.id); if (!n) { sel = null; return renderProps(); }
+  p.innerHTML = `<h3>Bloque</h3>
+    <div><label>Nombre</label><input id="pLabel" value="${esc(n.label)}"></div>
+    <div><label>Tipo</label><select id="pType">${Object.entries(NODE_TYPES).map(([k, t]) => `<option value="${k}" ${n.type === k ? 'selected' : ''}>${t.name}</option>`).join('')}</select></div>
+    <div><label>Datos (opcional)</label><input id="pDatos" value="${esc(n.datos)}" placeholder="T. ciclo, potencia, capacidad…"></div>
+    <label class="chk"><input type="checkbox" id="pAn" ${n.analizado ? 'checked' : ''}> Es el equipo analizado</label>
+    <label class="chk"><input type="checkbox" id="pCr" ${n.critico ? 'checked' : ''}> Es un paso crítico</label>
+    <div id="pCrBox" ${n.critico ? '' : 'hidden'} class="stack"><div><label>Criterio</label><select id="pCrit"><option value="">Elige…</option>${CRITERIOS.map(c => `<option ${n.criterio === c ? 'selected' : ''}>${c}</option>`).join('')}</select></div><div><label>Justificación</label><textarea id="pJust">${esc(n.just)}</textarea></div></div>
+    <div class="subcard"><b>Mapa de detalle</b><span class="small">Divide este bloque en mini procesos, cada uno con sus fallos.</span><button class="pri" id="pSub">${n.sub && n.sub.nodes.length ? 'Abrir detalle (' + n.sub.nodes.length + ' pasos)' : '＋ Crear mapa de detalle'}</button></div>
+    <div class="row"><button id="pDup">⧉ Duplicar</button><button class="danger" id="pDel">Borrar bloque</button></div>`;
+  const up = (k, v) => { n[k] = v; save(); redrawMap(); };
+  $('#pLabel').oninput = e => up('label', e.target.value);
+  $('#pType').onchange = e => up('type', e.target.value);
+  $('#pDatos').oninput = e => up('datos', e.target.value);
+  $('#pAn').onchange = e => up('analizado', e.target.checked);
+  $('#pCr').onchange = e => { up('critico', e.target.checked); $('#pCrBox').hidden = !e.target.checked; };
+  $('#pCrit').onchange = e => up('criterio', e.target.value);
+  $('#pJust').oninput = e => up('just', e.target.value);
+  $('#pDel').onclick = delSel;
+  $('#pSub').onclick = () => openDetail(n.id);
+  $('#pDup').onclick = () => { const c = JSON.parse(JSON.stringify(n)); const reid = x => { x.id = uid(); if (x.sub) { const map = {}; x.sub.nodes.forEach(y => { const o = y.id; reid(y); map[o] = y.id; }); x.sub.edges.forEach(e => { e.id = uid(); e.from = map[e.from]; e.to = map[e.to]; }); } }; reid(c); c.x += 30; c.y += 30; c.analizado = false; M().nodes.push(c); sel = {kind: 'node', id: c.id}; save(); redrawMap(); renderProps(); };
+}
+
+/* ---------- Paso 2 · Equipo ---------- */
+function rEquipo(el) {
+  if (!S.equipo.length) S.equipo.push({id: uid(), nombre: '', rol: 'Coordinador'});
+  el.innerHTML = `
+  <div class="head"><div><p class="kick">Paso 2</p><h2>Equipo de trabajo</h2></div><button class="acc" id="addM">+ Añadir miembro</button></div>
+  <div class="card"><table><tr><th style="width:45%">Nombre</th><th>Papel en el AMFE</th><th style="width:60px"></th></tr>
+  ${S.equipo.map(m => `<tr data-m="${m.id}"><td><input data-f="nombre" value="${esc(m.nombre)}" placeholder="Nombre"></td><td><select data-f="rol">${ROLES.map(r => `<option ${m.rol === r ? 'selected' : ''}>${r}</option>`).join('')}</select></td><td><button class="ghost danger" data-del>✕</button></td></tr>`).join('')}</table></div>
+  <div class="min" style="margin-top:14px"><b>Mínimo:</b><ul><li>Un <b>coordinador</b> que dirige, reparte el tiempo y documenta.</li><li>Un papel para cada miembro: mantenimiento, producción, calidad…</li><li>Al menos uno que conozca el equipo como operador.</li></ul></div>
+  ${nav('mapa', 'criticos')}`;
+  $('#addM').onclick = () => { S.equipo.push({id: uid(), nombre: '', rol: 'Mantenimiento mecánico'}); save(); render(); };
+  $$('tr[data-m]', el).forEach(tr => { const m = S.equipo.find(x => x.id === tr.dataset.m);
+    $$('[data-f]', tr).forEach(i => i.oninput = i.onchange = e => { m[e.target.dataset.f] = e.target.value; save(); });
+    $('[data-del]', tr).onclick = () => { S.equipo = S.equipo.filter(x => x !== m); save(); render(); }; });
+}
+
+/* ---------- Paso 3 · Pasos críticos ---------- */
+function rCriticos(el) {
+  const AN = allNodes(S), N = AN.map(x => x.n);
+  el.innerHTML = `
+  <div class="head"><div><p class="kick">Paso 3</p><h2>Pasos críticos</h2></div></div>
+  ${N.length ? `<div class="card"><table><tr><th>Bloque del mapa</th><th style="width:90px">Crítico</th><th style="width:200px">Criterio</th><th>Justificación</th></tr>
+  ${AN.map(({n, path, depth}) => `<tr data-n="${n.id}"><td><div style="padding-left:${depth * 22}px">${depth ? '↳ ' : ''}<b>${esc(n.label)}</b><div class="small muted">${path.length ? 'Detalle de ' + esc(path.map(p => p.label).join(' › ')) + ' · ' : ''}${NODE_TYPES[n.type].name}${n.analizado ? ' · equipo analizado' : ''}</div></div></td>
+    <td><input type="checkbox" data-f="critico" ${n.critico ? 'checked' : ''} style="width:20px;height:20px"></td>
+    <td><select data-f="criterio" ${n.critico ? '' : 'disabled'}><option value="">Elige…</option>${CRITERIOS.map(c => `<option ${n.criterio === c ? 'selected' : ''}>${c}</option>`).join('')}</select></td>
+    <td><textarea data-f="just" rows="2" ${n.critico ? '' : 'disabled'} placeholder="¿Por qué es crítico?">${esc(n.just)}</textarea></td></tr>`).join('')}</table></div>`
+  : `<div class="hint">Primero dibujad el mapa del proceso en el paso 1.</div>`}
+  <div class="min" style="margin-top:14px"><b>Mínimo:</b><ul><li>Elegid <b>2 o 3</b> pasos del mapa general. Si habéis hecho un mapa de detalle, marcad también sus mini procesos críticos.</li><li>Justificad cada uno por este orden: <b>salud y seguridad, calidad y disponibilidad</b>.</li></ul></div>
+  ${nav('equipo', 'amfe')}`;
+  $$('tr[data-n]', el).forEach(tr => { const n = N.find(x => x.id === tr.dataset.n);
+    $$('[data-f]', tr).forEach(i => i.oninput = i.onchange = e => { const f = e.target.dataset.f; n[f] = f === 'critico' ? e.target.checked : e.target.value; save();
+      if (f === 'critico') { $$('select,textarea', tr).forEach(x => x.disabled = !n.critico); } }); });
+}
+
+/* ---------- Pasos 4 a 7 · Análisis AMFE ---------- */
+function selGOD(k, v, f) {
+  return `<select data-f="${f}"><option value="">—</option>${[10,9,8,7,6,5,4,3,2,1].map(x => `<option value="${x}" ${v === x ? 'selected' : ''}>${x} · ${catOf(k, x)[2]}</option>`).join('')}</select><div class="selhelp" data-help="${f}">${v ? esc(catOf(k, v)[3]) : ''}</div>`;
+}
+function pasoOpts(cur) {
+  const AN = allNodes(S), o = x => `<option value="${x.n.id}" ${cur === x.n.id ? 'selected' : ''}>${'\u00A0\u00A0'.repeat(x.depth)}${esc(nodeName(S, x.n.id))}${x.n.critico ? ' ⚠' : ''}</option>`;
+  const cr = AN.filter(x => x.n.critico), rest = AN.filter(x => !x.n.critico);
+  return `<option value="">Paso del mapa…</option>${cr.length ? `<optgroup label="Pasos críticos">${cr.map(o).join('')}</optgroup><optgroup label="Otros pasos">${rest.map(o).join('')}</optgroup>` : AN.map(o).join('')}`;
+}
+function lint(f, U) {
+  const w = [], v = npr(f), v2 = npr2(f), sinCtrl = !f.control.trim() || /^(ningun|ninguno|nada|no hay|sin control|no existe)/i.test(f.control.trim());
+  if ((f.efecto.trim() || f.causa.trim()) && !f.modo.trim()) w.push('Falta el modo de fallo: cómo deja el equipo de hacer su función.');
+  if (f.modo.trim() && f.efecto.trim() && f.modo.trim().toLowerCase() === f.efecto.trim().toLowerCase()) w.push('El efecto repite el modo de fallo: el efecto es lo que provoca (parada, piezas malas, riesgo).');
+  if (f.D && sinCtrl && f.D < 6) w.push(`Sin control actual, la detección debería ser alta (6–10), no ${f.D}.`);
+  if (f.G >= 9 && v != null && v < U) w.push('Fallo de seguridad con NPR bajo el umbral: valorad acciones igualmente.');
+  if (f.accion.trim() && v2 == null) w.push('Hay acción pero falta el nuevo G, O y D.');
+  if (v != null && v2 != null && v2 >= v) w.push('La acción no reduce el NPR: revisad la acción o los nuevos valores.');
+  if (f.G2 && f.G && f.G2 !== f.G) w.push('La gravedad no suele cambiar con una acción, salvo que se modifique el diseño.');
+  if (v != null && v >= U && !f.accion.trim()) w.push(`NPR ≥ ${U}: hace falta una acción en el paso 8.`);
+  return w;
+}
+const lintHtml = (f, U) => lint(f, U).map(x => `<div>⚠ ${esc(x)}</div>`).join('');
+let fFilter = '';
+function nprBadge(v, u, pre = 'NPR') { return `<span class="npr ${nprClass(v, u)}">${pre} ${v ?? '—'}</span>`; }
+const caseF = () => (CASOS[S.meta.caso] || {}).f || [];
+function rAmfe(el) {
+  const U = S.meta.umbral || 100;
+  el.innerHTML = `
+  <div class="head"><div><p class="kick">Pasos 4 a 7</p><h2>Análisis AMFE</h2></div>
+  <div class="row"><button id="bEsc">Ver escalas G, O y D</button>${caseF().length ? '<button id="bImp">Importar fallos del caso</button>' : ''}<button id="bSort">Ordenar por NPR</button><button class="acc" id="addF">+ Añadir fallo</button></div></div>
+  ${casoBox()}
+  ${allNodes(S).length > 4 ? `<div class="row" style="margin-bottom:12px"><label style="margin:0">Ver fallos de</label><select id="fFil" style="width:auto;min-width:260px"><option value="">Todos los pasos (${S.fallos.length})</option>${allNodes(S).map(x => { const ids = subIds(x.n), c = S.fallos.filter(f => ids.includes(f.paso)).length; return `<option value="${x.n.id}" ${fFilter === x.n.id ? 'selected' : ''}>${'\u00A0\u00A0'.repeat(x.depth)}${esc(x.n.label)} (${c})</option>`; }).join('')}</select></div>` : ''}
+  <div class="stack" id="fl">${S.fallos.map((f, i) => (!fFilter || (findNode(S, fFilter) && subIds(findNode(S, fFilter).n).includes(f.paso))) ? falloCard(f, i, U) : '').join('') || '<div class="hint">Añadid el primer fallo con el botón «+ Añadir fallo».</div>'}</div>
+  <div class="min" style="margin-top:14px"><b>Mínimo:</b><ul><li><b>Paso 4:</b> al menos 4 fallos, cada uno con un efecto concreto y su gravedad (si hay varios efectos, el más grave).</li><li><b>Paso 5:</b> una causa por fallo y la ocurrencia según la frecuencia del caso o el histórico.</li><li><b>Paso 6:</b> el control que existe hoy y la detección <b>al revés</b>: si no hay control, valor alto.</li><li><b>Paso 7:</b> NPR = G × O × D. A partir de ${U} hay que actuar; comentad también los fallos de seguridad aunque no lleguen.</li></ul></div>
+  ${nav('criticos', 'acciones')}`;
+  const ff = $('#fFil'); if (ff) ff.onchange = e => { fFilter = e.target.value; render(); };
+  const bi = $('#bImp'); if (bi) bi.onclick = () => ask(`Se añadirán ${caseF().length} fallos del caso con el modo, el efecto, la frecuencia y el control ya escritos. Vosotros asignáis el paso, la causa y los valores de G, O y D. ¿Seguir?`, () => { caseF().forEach(r => S.fallos.push(Object.assign(newFallo(), {modo: r[0], efecto: r[1], frec: r[2], control: r[3]}))); save(); render(); });
+  $('#addF').onclick = () => { S.fallos.push(newFallo(fFilter)); save(); render(); setTimeout(() => { const c = $$('.fallo').pop(); if (c) { c.scrollIntoView({behavior: 'smooth', block: 'center'}); $('[data-f=modo]', c).focus(); } }, 50); };
+  $('#bSort').onclick = () => { S.fallos.sort((a, b) => (npr(b) || 0) - (npr(a) || 0)); save(); render(); };
+  $('#bEsc').onclick = showScales;
+  bindFallos(el, U);
+}
+function falloCard(f, i, U) {
+  const v = npr(f), seg = f.G >= 9;
+  return `<div class="fallo" data-fid="${f.id}">
+    <div class="fh"><span class="n">${i + 1}</span><div style="flex:1;min-width:220px"><select data-f="paso">${pasoOpts(f.paso)}</select></div>
+      <span data-npr>${nprBadge(v, U)}</span><span data-flag>${flagHtml(f, U)}</span>
+      <button class="ghost" data-dup title="Duplicar">⧉</button><button class="ghost danger" data-del title="Borrar">✕</button></div>
+    <div class="fgrid">
+      <div><label>4 · Modo de fallo</label><textarea data-f="modo" rows="2" placeholder="¿Cómo deja el equipo de hacer lo que debe?">${esc(f.modo)}</textarea></div>
+      <div><label>Efecto</label><textarea data-f="efecto" rows="2" placeholder="¿Qué pasa cuando ocurre? Parada, piezas malas, riesgo…">${esc(f.efecto)}</textarea></div>
+      <div><label>G · Gravedad</label>${selGOD('G', f.G, 'G')}</div>
+      <div><label>5 · Causa</label><textarea data-f="causa" rows="2" placeholder="¿Por qué ocurre?">${esc(f.causa)}</textarea></div>
+      <div><label>Frecuencia o histórico (opcional)</label><textarea data-f="frec" rows="2" placeholder="Veces al año, MTBF…">${esc(f.frec || '')}</textarea></div>
+      <div><label>O · Ocurrencia</label>${selGOD('O', f.O, 'O')}</div>
+      <div style="grid-column:span 2"><label>6 · Control actual</label><textarea data-f="control" rows="2" placeholder="¿Qué control existe hoy para verlo venir?">${esc(f.control)}</textarea></div>
+      <div><label>D · Detección</label>${selGOD('D', f.D, 'D')}</div>
+    </div><div class="lint" data-lint>${lintHtml(f, U)}</div></div>`;
+}
+function flagHtml(f, U) { const v = npr(f); let s = ''; if (v != null) s += v >= U ? '<span class="tag warn">Requiere acción</span> ' : '<span class="tag ok">Bajo el umbral</span> '; if (f.G >= 9) s += '<span class="tag warn">⚠ Seguridad</span>'; return s; }
+function bindFallos(el, U) {
+  $$('.fallo', el).forEach(card => { const f = S.fallos.find(x => x.id === card.dataset.fid);
+    $$('[data-f]', card).forEach(i => i.oninput = i.onchange = e => { const k = e.target.dataset.f; f[k] = ['G','O','D'].includes(k) ? num(e.target.value) : e.target.value; save(); $('[data-lint]', card).innerHTML = lintHtml(f, U);
+      if (['G','O','D'].includes(k)) { $(`[data-help="${k}"]`, card).textContent = f[k] ? catOf(k, f[k])[3] : ''; $('[data-npr]', card).innerHTML = nprBadge(npr(f), U); $('[data-flag]', card).innerHTML = flagHtml(f, U); } });
+    $('[data-del]', card).onclick = () => ask('¿Borrar este fallo?', () => { S.fallos = S.fallos.filter(x => x !== f); save(); render(); });
+    $('[data-dup]', card).onclick = () => { const c = Object.assign({}, f, {id: uid()}); S.fallos.splice(S.fallos.indexOf(f) + 1, 0, c); save(); render(); };
+  });
+}
+function showScales() {
+  modal(`<h3>Escalas de valoración</h3><table><tr><th>Valor</th><th>Gravedad (G)</th><th>Ocurrencia (O)</th><th>Detección (D)</th></tr>
+  ${[0,1,2,3].map(i => `<tr><td><b>${SCALES.G.rows[i][0]}–${SCALES.G.rows[i][1]}</b></td>${['G','O','D'].map(k => `<td><b>${SCALES[k].rows[i][2]}</b><br><span class="small">${SCALES[k].rows[i][3]}</span></td>`).join('')}</tr>`).join('')}</table>
+  <p class="small muted">Primero elegid la categoría y después el número dentro del rango, justificándolo con lo que dice el caso. La detección va al revés: cuanto más difícil de detectar, más alta.</p><div class="row" style="justify-content:flex-end"><button class="pri" data-close>Cerrar</button></div>`);
+}
+
+/* ---------- Paso 8 · Acciones ---------- */
+function rAcciones(el) {
+  const U = S.meta.umbral || 100; const list = [...S.fallos].sort((a, b) => (npr(b) || 0) - (npr(a) || 0));
+  const names = S.equipo.map(m => m.nombre).filter(Boolean);
+  el.innerHTML = `
+  <div class="head"><div><p class="kick">Paso 8</p><h2>Acciones y nuevo NPR</h2></div><div class="small muted">Ordenados de mayor a menor NPR · umbral ${U}</div></div>
+  <datalist id="dlResp">${names.map(n => `<option value="${esc(n)}">`).join('')}<option value="Mantenimiento"><option value="Producción"><option value="Calidad"></datalist>
+  <div class="stack">${list.map((f, i) => { const v = npr(f), v2 = npr2(f), need = (v || 0) >= U;
+    return `<div class="fallo" data-fid="${f.id}">
+      <div class="fh"><span class="n">${i + 1}</span><div style="flex:1;min-width:220px"><b>${esc(f.modo || 'Fallo sin nombre')}</b><div class="small muted">${esc(nodeName(S, f.paso))} · G ${f.G ?? '—'} · O ${f.O ?? '—'} · D ${f.D ?? '—'}</div></div>
+      ${nprBadge(v, U)}<span>→</span><span data-npr2>${nprBadge(v2, U, 'NPR(2)')}</span><span data-red class="small">${redTxt(v, v2)}</span>
+      ${need ? '<span class="tag warn">Requiere acción</span>' : '<span class="tag ok">Opcional</span>'}${f.G >= 9 ? ' <span class="tag warn">⚠ Seguridad</span>' : ''}</div>
+      <div class="fgrid">
+        <div style="grid-column:span 2"><label>Acción a tomar</label><textarea data-f="accion" rows="2" placeholder="${need ? 'Obligatoria: el NPR supera el umbral' : 'Opcional'}">${esc(f.accion)}</textarea></div>
+        <div><label>Tipo</label><select data-f="tipo"><option value="">—</option>${TIPOS_ACC.map(t => `<option ${f.tipo === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+        <div><label>Responsable</label><input data-f="resp" list="dlResp" value="${esc(f.resp)}"></div>
+        <div><label>Fecha</label><input data-f="fecha" type="date" value="${esc(f.fecha)}"></div>
+        <div><label>&nbsp;</label><button data-copy title="Copiar G, O y D iniciales">Copiar G, O, D iniciales</button></div>
+        <div><label>G (2)</label>${selGOD('G', f.G2, 'G2')}</div><div><label>O (2)</label>${selGOD('O', f.O2, 'O2')}</div><div><label>D (2)</label>${selGOD('D', f.D2, 'D2')}</div>
+      </div><div class="lint" data-lint>${lintHtml(f, U)}</div></div>`; }).join('') || '<div class="hint">Todavía no hay fallos. Añadidlos en el análisis AMFE.</div>'}</div>
+  <div class="min" style="margin-top:14px"><b>Mínimo:</b><ul><li>Una acción para cada NPR ≥ ${U}, con <b>responsable y fecha</b>.</li><li>Nuevo G, O y D y un <b>NPR (2) más bajo</b> que el inicial. La gravedad no suele cambiar: lo que baja es la ocurrencia o mejora la detección.</li></ul></div>
+  ${nav('amfe', 'entrega')}`;
+  $$('.fallo', el).forEach(card => { const f = S.fallos.find(x => x.id === card.dataset.fid);
+    const upd = () => { $('[data-npr2]', card).innerHTML = nprBadge(npr2(f), U, 'NPR(2)'); $('[data-red]', card).textContent = redTxt(npr(f), npr2(f)); };
+    $$('[data-f]', card).forEach(i => i.oninput = i.onchange = e => { const k = e.target.dataset.f; f[k] = ['G2','O2','D2'].includes(k) ? num(e.target.value) : e.target.value; save(); $('[data-lint]', card).innerHTML = lintHtml(f, U);
+      if (['G2','O2','D2'].includes(k)) { $(`[data-help="${k}"]`, card).textContent = f[k] ? catOf(k[0], f[k])[3] : ''; upd(); } });
+    $('[data-copy]', card).onclick = () => { f.G2 = f.G; f.O2 = f.O; f.D2 = f.D; save(); render(); };
+  });
+}
+const redTxt = (a, b) => (a && b) ? (b < a ? `−${Math.round((1 - b / a) * 100)} %` : b > a ? 'sube' : 'igual') : '';
+
+/* ---------- Resumen, gráfico y entrega ---------- */
+function chartSVG(d) {
+  const U = d.meta.umbral || 100, F = [...d.fallos].filter(f => npr(f) != null).sort((a, b) => npr(b) - npr(a));
+  if (!F.length) return '<p class="muted">Aún no hay NPR calculados.</p>';
+  const max = Math.max(U * 1.2, ...F.map(f => npr(f))), W = 900, rowH = 46, left = 260, H = F.length * rowH + 40, sc = v => (W - left - 40) * v / max;
+  let s = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="NPR antes y después de las acciones" style="width:100%;height:auto;background:#fff;border-radius:10px">`;
+  F.forEach((f, i) => { const y = 14 + i * rowH, a = npr(f), b = npr2(f);
+    s += `<text x="${left - 10}" y="${y + 17}" text-anchor="end" font-size="13" fill="#1C2530">${esc((f.modo || 'Fallo').slice(0, 34))}</text>`;
+    s += `<rect x="${left}" y="${y + 4}" width="${sc(a)}" height="16" rx="3" fill="#E57A35"/><text x="${left + sc(a) + 6}" y="${y + 17}" font-size="12" font-weight="700" fill="#B04E17">${a}</text>`;
+    if (b != null) s += `<rect x="${left}" y="${y + 22}" width="${sc(b)}" height="12" rx="3" fill="#3A6FA3"/><text x="${left + sc(b) + 6}" y="${y + 33}" font-size="11" font-weight="700" fill="#1F4E7E">${b}</text>`; });
+  const ux = left + sc(U); s += `<line x1="${ux}" y1="6" x2="${ux}" y2="${H - 24}" stroke="#B03A2E" stroke-dasharray="5 4" stroke-width="1.5"/><text x="${ux}" y="${H - 8}" text-anchor="middle" font-size="12" fill="#B03A2E">Umbral ${U}</text>`;
+  s += `<rect x="10" y="${H - 20}" width="12" height="10" fill="#E57A35"/><text x="27" y="${H - 11}" font-size="12">NPR inicial</text><rect x="110" y="${H - 20}" width="12" height="10" fill="#3A6FA3"/><text x="127" y="${H - 11}" font-size="12">NPR tras acciones</text>`;
+  return s + '</svg>';
+}
+function matrixHTML(d) {
+  const F = [...d.fallos].sort((a, b) => (npr(b) || 0) - (npr(a) || 0)); const cell = {};
+  F.forEach((f, i) => { if (f.G && f.O) (cell[f.G + '-' + f.O] = cell[f.G + '-' + f.O] || []).push(i + 1); });
+  const col = (g, o) => { const v = g * o; return v >= 50 ? '#F2CFCB' : v >= 25 ? '#F6DFC4' : v >= 10 ? '#FBF0D9' : '#D8EBDD'; };
+  let h = '<div class="mx">';
+  for (let g = 10; g >= 1; g--) { h += `<div class="ax">${g}</div>`; for (let o = 1; o <= 10; o++) h += `<div class="c" style="background:${col(g, o)}" title="G ${g} · O ${o}">${(cell[g + '-' + o] || []).join(',')}</div>`; }
+  h += '<div></div>' + [1,2,3,4,5,6,7,8,9,10].map(o => `<div class="ax">${o}</div>`).join('') + '</div>';
+  return h + '<p class="small muted" style="margin:6px 0 0">Vertical: gravedad (G). Horizontal: ocurrencia (O). Los números son los fallos ordenados por NPR. Arriba a la derecha, los más peligrosos.</p>';
+}
+function lintAll(d) { const U = d.meta.umbral || 100; return [...d.fallos].map((f, i) => ({f, i, w: lint(f, U)})).filter(x => x.w.length); }
+function csvAmfe(d) {
+  const rows = [['Nº', 'Paso', 'Modo de fallo', 'Efecto', 'G', 'Causa', 'O', 'Control actual', 'D', 'NPR', 'Acción', 'Tipo', 'Responsable', 'Fecha', 'G2', 'O2', 'D2', 'NPR2']];
+  [...d.fallos].sort((a, b) => (npr(b) || 0) - (npr(a) || 0)).forEach((f, i) => rows.push([i + 1, nodeName(d, f.paso), f.modo, f.efecto, f.G, f.causa, f.O, f.control, f.D, npr(f), f.accion, f.tipo, f.resp, f.fecha, f.G2, f.O2, f.D2, npr2(f)]));
+  return '\ufeff' + rows.map(r => r.map(c => '"' + String(c ?? '').replace(/"/g, '""') + '"').join(';')).join('\r\n');
+}
+function checksHTML(d) { return `<div class="checks">${checks(d).map((c, i) => `<div class="ck ${c.s}"><span class="i">${c.s === 'ok' ? '✓' : c.s === 'part' ? '!' : '✕'}</span><div><b>${i + 1}. ${esc(c.t)}</b><div class="d">${esc(c.d)}</div></div></div>`).join('')}</div>`; }
+function kpis(d) {
+  const U = d.meta.umbral || 100, F = d.fallos, a = F.map(npr).filter(v => v != null), b = F.map(f => npr2(f) ?? npr(f)).filter(v => v != null);
+  return {n: F.length, maxA: a.length ? Math.max(...a) : 0, maxB: b.length ? Math.max(...b) : 0, overA: a.filter(v => v >= U).length, overB: b.filter(v => v >= U).length};
+}
+function rEntrega(el) {
+  const k = kpis(S), ck = checks(S), okN = ck.filter(c => c.s === 'ok').length;
+  el.innerHTML = `
+  <div class="head"><div><p class="kick">Resumen y entrega</p><h2>${esc(S.meta.grupo || 'Vuestro AMFE')}</h2></div><div class="row"><button id="bCsv">⬇ Tabla en Excel (CSV)</button><button id="bPrint">🖨 Imprimir o guardar PDF</button></div></div>
+  <div class="kpis"><div class="kpi"><div class="v">${k.n}</div><div class="l">Fallos analizados</div></div><div class="kpi"><div class="v">${k.maxA} → ${k.maxB}</div><div class="l">NPR máximo antes → después</div></div><div class="kpi"><div class="v">${k.overA} → ${k.overB}</div><div class="l">Fallos sobre el umbral</div></div><div class="kpi"><div class="v">${okN} / 8</div><div class="l">Mínimos cumplidos</div></div></div>
+  <div class="grid2" style="margin-top:16px;align-items:start">
+    <div class="card stack"><h3>NPR antes y después de las acciones</h3>${chartSVG(S)}</div>
+    <div class="card stack"><h3>Comprobación de mínimos</h3>${checksHTML(S)}</div>
+  </div>
+  <div class="grid2" style="margin-top:16px;align-items:start">
+    <div class="card stack"><h3>Matriz de riesgo G × O</h3>${matrixHTML(S)}</div>
+    <div class="card stack"><h3>Revisión rápida</h3>${lintAll(S).length ? lintAll(S).map(x => `<div class="lint"><b>${esc(x.f.modo || 'Fallo sin nombre')}</b>${x.w.map(w => `<div>⚠ ${esc(w)}</div>`).join('')}</div>`).join('') : '<p class="muted">No hay avisos: los valores son coherentes.</p>'}<p class="small muted">Son avisos automáticos para revisar, no errores seguros.</p></div>
+  </div>
+  <div class="card stack" style="margin-top:16px"><h3>Entregar al profesor</h3>
+    <p>1. Descargad el <b>informe de entrega</b> (.html) y <b>subidlo a la tarea de Classroom</b>. 2. Si el profesor lo pide, copiad también el código y pegadlo en la tarea.</p>
+    <div class="row"><button class="acc" id="bDl">⬇ Descargar informe de entrega</button><button id="bCopy">⧉ Copiar código de entrega</button><button id="bJson" title="Solo los datos, sin informe">Datos (.json)</button></div>
+    <p class="small muted">El informe se abre con doble clic en cualquier navegador, se puede imprimir y lleva dentro todos los datos: para seguir en otro ordenador, en Inicio pulsad «Abrir informe guardado».</p>
+  </div>
+  ${nav('acciones', null)}`;
+  $('#bDl').onclick = () => saveReport(S);
+  $('#bJson').onclick = () => download(fileName(S), JSON.stringify(S, null, 1), 'application/json');
+  $('#bCopy').onclick = async () => { const c = await encode(S); copyText(c); toast('Código copiado (' + c.length + ' caracteres)'); };
+  $('#bPrint').onclick = () => printReport(S);
+  $('#bCsv').onclick = () => download(fileName(S).replace('.amfe.json', '.csv'), csvAmfe(S), 'text/csv');
+}
+const slug = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 40);
+const fileName = d => `AMFE_${slug(d.meta.grupo) || 'grupo'}_${slug(d.meta.caso === 'libre' ? d.meta.casoTitulo : 'Caso_' + d.meta.caso) || 'caso'}.amfe.json`;
+
+/* ---------- Informe imprimible (alumno y profesor) ---------- */
+function reportHTML(d, ev) {
+  const U = d.meta.umbral || 100, m = d.meta, caso = m.caso === 'libre' ? m.casoTitulo : (CASOS[m.caso] || {}).t;
+  const F = [...d.fallos].sort((a, b) => (npr(b) || 0) - (npr(a) || 0));
+  let h = `<div style="font-family:Inter,Arial,sans-serif;color:#1C2530">
+  <h1 style="font-size:20pt;margin:0 0 4px">AMFE · ${esc(caso || 'Caso')}</h1>
+  <p style="margin:0 0 10px"><b>Grupo:</b> ${esc(m.grupo)} · <b>Alumnos:</b> ${esc(m.alumnos.split('\n').filter(Boolean).join(', '))} · <b>Curso:</b> ${esc(m.curso)} · <b>Umbral:</b> ${U} · <b>Última modificación:</b> ${m.actualizado ? new Date(m.actualizado).toLocaleString('es-ES') : '—'}</p>
+  <h2 style="font-size:13pt;margin:10px 0 6px">1. Mapa del proceso</h2>${mapsBlock(d, 280)}
+  <h2 style="font-size:13pt;margin:12px 0 6px">2. Equipo · 3. Pasos críticos</h2>
+  <table><tr><th>Miembro</th><th>Papel</th></tr>${d.equipo.map(x => `<tr><td>${esc(x.nombre)}</td><td>${esc(x.rol)}</td></tr>`).join('')}</table>
+  <table style="margin-top:6px"><tr><th>Paso crítico</th><th>Criterio</th><th>Justificación</th></tr>${allNodes(d).map(x => x.n).filter(n => n.critico).map(n => `<tr><td>${esc(nodeName(d, n.id))}</td><td>${esc(n.criterio)}</td><td>${esc(n.just)}</td></tr>`).join('') || '<tr><td colspan="3">Sin pasos críticos</td></tr>'}</table>
+  <h2 class="pb" style="font-size:13pt;margin:12px 0 6px">4–7. Análisis AMFE</h2>
+  <table><tr><th>#</th><th>Paso</th><th>Modo de fallo</th><th>Efecto</th><th>G</th><th>Causa</th><th>O</th><th>Control actual</th><th>D</th><th>NPR</th></tr>
+  ${F.map((f, i) => `<tr><td>${i + 1}</td><td>${esc(nodeName(d, f.paso))}</td><td>${esc(f.modo)}</td><td>${esc(f.efecto)}</td><td>${f.G ?? ''}</td><td>${esc(f.causa)}</td><td>${f.O ?? ''}</td><td>${esc(f.control)}</td><td>${f.D ?? ''}</td><td>${nprBadge(npr(f), U, '')}</td></tr>`).join('')}</table>
+  <h2 style="font-size:13pt;margin:12px 0 6px">8. Acciones y nuevo NPR</h2>
+  <table><tr><th>#</th><th>Acción</th><th>Tipo</th><th>Responsable</th><th>Fecha</th><th>G2</th><th>O2</th><th>D2</th><th>NPR</th><th>NPR(2)</th></tr>
+  ${F.map((f, i) => `<tr><td>${i + 1}</td><td>${esc(f.accion) || '<i>—</i>'}</td><td>${esc(f.tipo)}</td><td>${esc(f.resp)}</td><td>${f.fecha ? new Date(f.fecha).toLocaleDateString('es-ES') : ''}</td><td>${f.G2 ?? ''}</td><td>${f.O2 ?? ''}</td><td>${f.D2 ?? ''}</td><td>${npr(f) ?? ''}</td><td>${npr2(f) ?? ''}</td></tr>`).join('')}</table>
+  <div class="pb" style="display:grid;grid-template-columns:1.2fr 1fr;gap:14px;margin-top:12px"><div><h2 style="font-size:13pt;margin:0 0 6px">NPR antes y después</h2>${chartSVG(d)}<h2 style="font-size:13pt;margin:10px 0 6px">Matriz G × O</h2><div style="max-width:360px">${matrixHTML(d)}</div></div><div><h2 style="font-size:13pt;margin:0 0 6px">Mínimos</h2>${checksHTML(d)}</div></div>`;
+  if (ev) { const r = rubricRows(d, ev);
+    h += `<h2 class="pb" style="font-size:13pt;margin:12px 0 6px">Evaluación del profesor</h2><table><tr><th>Criterio</th><th>Peso</th><th>Nota (0–10)</th><th>Comentario</th></tr>${r.rows.map(x => `<tr><td>${esc(x.t)}</td><td>${x.w} %</td><td><b>${fmt(x.v)}</b></td><td>${esc(x.c)}</td></tr>`).join('')}</table>
+    <p style="font-size:16pt;margin:10px 0"><b>Nota final: ${fmt(r.total)}</b></p>${ev.general ? `<p><b>Comentario general:</b> ${esc(ev.general)}</p>` : ''}`; }
+  return h + '</div>';
+}
+async function resumeHTML(d) {
+  const code = await encode(d), url = /^https?:/.test(location.protocol) ? location.href.split('#')[0].split('?')[0] : '';
+  return `<div class="pb" style="font-family:Inter,Arial,sans-serif;color:#1C2530;margin-top:14px"><h2 style="font-size:13pt;margin:0 0 6px">Para seguir trabajando</h2>
+  <p style="margin:0 0 6px">Este informe lleva dentro todos los datos del AMFE. Para continuar en cualquier ordenador: abrid la app${url ? ` (<a href="${esc(url)}">${esc(url)}</a>)` : ''}, en <b>Inicio</b> pulsad <b>«Abrir informe guardado»</b> y elegid este archivo. Si solo tenéis el PDF impreso, usad <b>«Pegar código»</b> con el código de abajo.</p>
+  <p style="margin:0 0 4px;font-size:9pt;color:#5A6573">Código de continuación (${code.length} caracteres) · guardado el ${new Date(d.meta.actualizado || Date.now()).toLocaleString('es-ES')}</p>
+  <div style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:7pt;line-height:1.25;word-break:break-all;background:#F3F5F8;border:1px solid #D5DBE3;border-radius:6px;padding:8px">${code}</div></div>`;
+}
+async function printReport(d, ev) { $('#report').innerHTML = reportHTML(d, ev) + (ev ? '' : await resumeHTML(d)); setTimeout(() => window.print(), 50); }
+const reportName = d => fileName(d).replace('.amfe.json', '_' + new Date().toISOString().slice(0, 10) + '.html');
+async function reportFile(d) {
+  const css = document.querySelector('style').textContent, data = JSON.stringify(d).replace(/</g, '\\u003c');
+  const m = d.meta, caso = m.caso === 'libre' ? m.casoTitulo : (CASOS[m.caso] || {}).t;
+  return `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AMFE · ${esc(m.grupo || 'Grupo')} · ${esc(caso || 'Caso')}</title><meta name="generator" content="amfe-mantenimiento">
+<style>${css}
+body{background:#fff}#report{display:block!important;max-width:1200px;margin:0 auto;padding:20px}
+.hint{font-family:Inter,Arial,sans-serif;background:#E8F0F8;border-radius:10px;padding:10px 14px;margin:0 auto 14px;max-width:1200px;font-size:14px}
+@media print{.hint{display:none!important}}</style></head><body>
+<div class="hint">Informe generado con la app <b>AMFE de mantenimiento</b>. Para imprimirlo o guardarlo como PDF: Ctrl+P. Para seguir editándolo: abrid la app y, en Inicio, «Abrir informe guardado».</div>
+<div id="report">${reportHTML(d)}${await resumeHTML(d)}</div>
+<script type="application/json" id="amfe-data">${data}<\/script>
+</body></html>`;
+}
+async function saveReport(d) { if (d === S) save(); download(reportName(d), await reportFile(d), 'text/html'); toast('Informe guardado en Descargas. Abridlo desde Inicio › «Abrir informe guardado» para seguir.'); }
+
+/* ---------- Codificación de entregas ---------- */
+const b64u = u8 => { let s = ''; u8.forEach(b => s += String.fromCharCode(b)); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
+const unb64u = s => { s = s.replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; const b = atob(s); return Uint8Array.from(b, c => c.charCodeAt(0)); };
+async function encode(obj) {
+  const json = JSON.stringify(obj);
+  if ('CompressionStream' in window) { const st = new Blob([json]).stream().pipeThrough(new CompressionStream('deflate-raw')); return 'AMFE1.' + b64u(new Uint8Array(await new Response(st).arrayBuffer())); }
+  return 'AMFE0.' + b64u(new TextEncoder().encode(json));
+}
+async function decode(code) {
+  code = code.replace(/\s+/g, '');
+  if (code.startsWith('AMFE1.')) { const st = new Blob([unb64u(code.slice(6))]).stream().pipeThrough(new DecompressionStream('deflate-raw')); return JSON.parse(await new Response(st).text()); }
+  if (code.startsWith('AMFE0.')) return JSON.parse(new TextDecoder().decode(unb64u(code.slice(6))));
+  if (code.startsWith('{')) return JSON.parse(code);
+  throw new Error('Formato desconocido');
+}
+function fromHTML(t) { const m = t.match(/<script[^>]*id=["']amfe-data["'][^>]*>([\s\S]*?)<\/script>/i); if (!m) throw new Error('el informe no contiene datos'); return JSON.parse(m[1]); }
+async function readEntrega(file) { const t = (await file.text()).trim(); const d = /^<(!doctype|html)/i.test(t) ? fromHTML(t) : t.startsWith('{') ? JSON.parse(t) : await decode(t); if (!d || d.app !== 'amfe-mantenimiento') throw new Error('no es una entrega de esta app'); return d; }
+
+/* ---------- Utilidades de interfaz ---------- */
+function download(name, text, type) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], {type})); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500); }
+function copyText(t) { if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(t).catch(() => fallbackCopy(t)); else fallbackCopy(t); }
+function fallbackCopy(t) { const ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch (e) {} ta.remove(); }
+function pickFiles(multiple, cb) { const i = document.createElement('input'); i.type = 'file'; i.accept = '.html,.htm,.json,.amfe,.txt,application/json,text/html'; i.multiple = multiple; i.onchange = () => cb([...i.files]); i.click(); }
+function modal(html, init) { const m = $('#modal'); m.innerHTML = `<div class="mbox">${html}</div>`; m.hidden = false; $$('[data-close]', m).forEach(b => b.onclick = closeModal); m.onclick = e => { if (e.target === m) closeModal(); }; if (init) init(m); }
+function closeModal() { $('#modal').hidden = true; $('#modal').innerHTML = ''; }
+function ask(text, ok) { modal(`<p style="font-size:16px">${esc(text)}</p><div class="row" style="justify-content:flex-end"><button data-close>Cancelar</button><button class="pri" id="askOk">Aceptar</button></div>`, m => { $('#askOk', m).onclick = () => { closeModal(); ok(); }; }); }
+let toastT; function toast(t) { let el = $('#toast'); if (!el) { el = document.createElement('div'); el.id = 'toast'; el.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1C2530;color:#fff;padding:10px 16px;border-radius:10px;z-index:60;font-size:14px;max-width:90vw'; document.body.appendChild(el); } el.textContent = t; el.style.display = 'block'; clearTimeout(toastT); toastT = setTimeout(() => el.style.display = 'none', 2600); }
+const fmt = v => v == null || isNaN(v) ? '—' : (Math.round(v * 100) / 100).toLocaleString('es-ES', {maximumFractionDigits: 2});
+
+/* ============================================================
+   MODO PROFESOR: importar entregas, revisarlas y evaluarlas
+   ============================================================ */
+const RUBRIC = [
+  {k: 'mapa', t: '1 · Mapa del proceso', w: 15, q: 'Bloques de entrada a salida, flechas coherentes, equipo analizado marcado'},
+  {k: 'equipo', t: '2 · Equipo de trabajo', w: 5, q: 'Coordinador y papeles definidos'},
+  {k: 'criticos', t: '3 · Pasos críticos', w: 10, q: '2–3 pasos justificados por salud, calidad y disponibilidad'},
+  {k: 'fallos', t: '4 · Fallos, efectos y gravedad', w: 20, q: 'Modos de fallo reales, efectos concretos, G coherente con la escala'},
+  {k: 'causas', t: '5 · Causas y ocurrencia', w: 15, q: 'Causas plausibles; O según frecuencia o histórico'},
+  {k: 'deteccion', t: '6 · Detección', w: 10, q: 'Controles actuales reales; D al revés bien aplicada'},
+  {k: 'npr', t: '7 · NPR y decisión', w: 10, q: 'NPR correctos, priorización y comentario de los fallos de seguridad'},
+  {k: 'acciones', t: '8 · Acciones y nuevo NPR', w: 15, q: 'Acciones eficaces, responsable y fecha, NPR(2) realista'}
+];
+let T = loadT(), tSel = null;
+function loadT() { try { return JSON.parse(localStorage.getItem(TKEY)) || {entregas: {}, evals: {}, weights: null}; } catch (e) { return {entregas: {}, evals: {}, weights: null}; } }
+function saveT() { try { localStorage.setItem(TKEY, JSON.stringify(T)); } catch (e) { toast('No se puede guardar: el navegador no deja más espacio'); } }
+const weights = () => RUBRIC.map(r => ({...r, w: (T.weights && T.weights[r.k] != null) ? T.weights[r.k] : r.w}));
+function hash(s) { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return (h >>> 0).toString(36); }
+function suggested(d) { const c = Object.fromEntries(checks(d).map(x => [x.k, x.s])); return Object.fromEntries(RUBRIC.map(r => [r.k, c[r.k] === 'ok' ? 8 : c[r.k] === 'part' ? 5 : 2])); }
+function rubricRows(d, ev) {
+  const sug = suggested(d), W = weights();
+  const rows = W.map(r => ({t: r.t, w: r.w, v: ev && ev.scores && ev.scores[r.k] != null ? ev.scores[r.k] : sug[r.k], c: ev && ev.comments ? ev.comments[r.k] || '' : '', k: r.k, q: r.q, sug: sug[r.k]}));
+  const sw = rows.reduce((a, r) => a + r.w, 0) || 1; const total = rows.reduce((a, r) => a + r.w * r.v, 0) / sw;
+  return {rows, total: ev && ev.final != null && ev.final !== '' ? +ev.final : total, calc: total};
+}
+async function addEntrega(d, origen) {
+  d = normalize(d); const id = hash(JSON.stringify(d.meta.grupo + d.meta.alumnos + d.meta.caso + d.meta.creado));
+  const prev = T.entregas[id]; T.entregas[id] = {data: d, origen, recibido: new Date().toISOString()};
+  saveT(); return prev ? 'actualizada' : 'nueva';
+}
+function openTeacher() { $('#teacher').hidden = false; document.body.style.overflow = 'hidden'; rTeacher(); }
+function closeTeacher() { $('#teacher').hidden = true; document.body.style.overflow = ''; tSel = null; }
+$('#btnProfe').onclick = openTeacher;
+function rTeacher() {
+  const t = $('#teacher'); const list = Object.entries(T.entregas).sort((a, b) => (a[1].data.meta.grupo || '').localeCompare(b[1].data.meta.grupo || ''));
+  if (tSel && T.entregas[tSel]) return rTeacherDetail(t, tSel);
+  t.innerHTML = `<div class="tbar"><b style="font-size:17px">Modo profesor</b><span style="flex:1;font-size:13px;opacity:.85">Las entregas y las notas se guardan solo en este navegador.</span><button id="tBack">← Volver a la app</button></div>
+  <div class="tmain">
+    <div class="grid2">
+      <div class="drop card" id="drop"><h3>Importar entregas</h3><p class="small">Arrastra aquí los <b>informes .html</b> (o archivos <b>.amfe.json</b>) que los alumnos han subido a Classroom (puedes soltar varios a la vez) o</p><button class="pri" id="tFiles">Elegir archivos…</button></div>
+      <div class="card stack"><h3>Pegar códigos de entrega</h3><textarea id="tCodes" rows="4" placeholder="Pega uno o varios códigos AMFE1…, uno por línea"></textarea><div class="row"><button id="tAddCodes">Importar códigos</button></div></div>
+    </div>
+    ${list.length ? (() => { const notas = list.map(([id, e]) => rubricRows(e.data, T.evals[id]).total), ev = list.filter(([id]) => T.evals[id] && T.evals[id].done).length; return `<div class="kpis"><div class="kpi"><div class="v">${list.length}</div><div class="l">Entregas</div></div><div class="kpi"><div class="v">${ev} / ${list.length}</div><div class="l">Evaluadas</div></div><div class="kpi"><div class="v">${fmt(notas.reduce((a, b) => a + b, 0) / notas.length)}</div><div class="l">Nota media</div></div><div class="kpi"><div class="v">${fmt(Math.min(...notas))} – ${fmt(Math.max(...notas))}</div><div class="l">Mínima – máxima</div></div></div>`; })() : ''}
+    <div class="card stack"><div class="row" style="justify-content:space-between"><h3>Entregas (${list.length})</h3>
+      <div class="row"><button class="acc" id="tShare">Compartir con la clase (QR)</button><button id="tW">Pesos de la rúbrica</button><button id="tCsv">⬇ Notas en CSV</button><button id="tBak">⬇ Copia de seguridad</button><button id="tRes">Restaurar copia</button><button class="danger" id="tClr">Vaciar</button></div></div>
+      ${list.length ? `<table><tr><th>Grupo</th><th>Alumnos</th><th>Caso</th><th>Fallos</th><th>Mínimos</th><th>NPR máx. antes → después</th><th>Nota</th><th>Estado</th><th></th></tr>
+      ${list.map(([id, e]) => { const d = e.data, ck = checks(d), k = kpis(d), ev = T.evals[id], r = rubricRows(d, ev);
+        return `<tr><td><b>${esc(d.meta.grupo || '—')}</b></td><td class="small">${esc(d.meta.alumnos.split('\n').filter(Boolean).join(', '))}</td><td class="small">${esc(d.meta.caso === 'libre' ? d.meta.casoTitulo : 'Caso ' + d.meta.caso)}</td><td>${d.fallos.length}</td><td>${ck.filter(c => c.s === 'ok').length}/8</td><td>${k.maxA} → ${k.maxB}</td><td><b>${ev ? fmt(r.total) : '<span class="muted">' + fmt(r.total) + ' (sugerida)</span>'}</b></td><td>${ev && ev.done ? '<span class="tag ok">Evaluada</span>' : '<span class="tag">Pendiente</span>'}</td><td><button data-open="${id}">Revisar</button> <button class="ghost danger" data-rm="${id}">✕</button></td></tr>`; }).join('')}</table>` : '<p class="muted">Todavía no hay entregas. Importa los archivos que los alumnos han subido a Classroom.</p>'}
+    </div>
+    <div class="hint"><b>Cómo funciona.</b> Los alumnos descargan su archivo en «Resumen y entrega» y lo suben a una tarea de Classroom. Descarga todos los archivos de la tarea (Classroom los guarda en una carpeta de Drive) y suéltalos aquí. La nota sugerida sale de la comprobación automática de mínimos; ajústala con la rúbrica según la calidad de cada parte. Haz una copia de seguridad si vas a cambiar de ordenador.</div>
+  </div>`;
+  $('#tBack').onclick = closeTeacher;
+  const drop = $('#drop'); drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); }; drop.ondragleave = () => drop.classList.remove('over');
+  drop.ondrop = e => { e.preventDefault(); drop.classList.remove('over'); importFiles([...e.dataTransfer.files]); };
+  $('#tFiles').onclick = () => pickFiles(true, importFiles);
+  $('#tAddCodes').onclick = async () => { const lines = $('#tCodes').value.split(/\n+/).map(s => s.trim()).filter(Boolean); let ok = 0, bad = 0; for (const l of lines) { try { const d = await decode(l); if (d.app !== 'amfe-mantenimiento') throw 0; await addEntrega(d, 'código'); ok++; } catch (e) { bad++; } } toast(`${ok} importadas${bad ? ', ' + bad + ' con error' : ''}`); rTeacher(); };
+  $$('[data-open]', t).forEach(b => b.onclick = () => { tSel = b.dataset.open; rTeacher(); t.scrollTop = 0; });
+  $$('[data-rm]', t).forEach(b => b.onclick = () => ask('¿Quitar esta entrega y su evaluación?', () => { delete T.entregas[b.dataset.rm]; delete T.evals[b.dataset.rm]; saveT(); rTeacher(); }));
+  $('#tCsv').onclick = exportCSV;
+  $('#tBak').onclick = () => download('AMFE_profesor_copia_' + new Date().toISOString().slice(0, 10) + '.json', JSON.stringify(T), 'application/json');
+  $('#tRes').onclick = () => pickFiles(false, async f => { try { const o = JSON.parse(await f[0].text()); if (!o.entregas) throw 0; T = o; saveT(); rTeacher(); toast('Copia restaurada'); } catch (e) { toast('Archivo de copia no válido'); } });
+  $('#tClr').onclick = () => ask('Se borrarán todas las entregas y notas de este navegador. Haz antes una copia de seguridad. ¿Seguir?', () => { T = {entregas: {}, evals: {}, weights: T.weights}; saveT(); rTeacher(); });
+  $('#tW').onclick = editWeights;
+  $('#tShare').onclick = shareModal;
+}
+async function importFiles(files) { let ok = 0, upd = 0, bad = 0; for (const f of files) { try { const r = await addEntrega(await readEntrega(f), f.name); r === 'nueva' ? ok++ : upd++; } catch (e) { bad++; } } toast(`${ok} nuevas${upd ? ', ' + upd + ' actualizadas' : ''}${bad ? ', ' + bad + ' no válidas' : ''}`); rTeacher(); }
+function editWeights() {
+  const W = weights();
+  modal(`<h3>Pesos de la rúbrica (%)</h3><table>${W.map(r => `<tr><td>${esc(r.t)}</td><td style="width:110px"><input type="number" min="0" max="100" data-w="${r.k}" value="${r.w}"></td></tr>`).join('')}</table><p class="small muted" id="wSum"></p><div class="row" style="justify-content:space-between"><button id="wRst">Valores por defecto</button><div class="row"><button data-close>Cancelar</button><button class="pri" id="wOk">Guardar</button></div></div>`, m => {
+    const sum = () => { const s = $$('[data-w]', m).reduce((a, i) => a + (+i.value || 0), 0); $('#wSum', m).textContent = 'Suma: ' + s + ' % ' + (s === 100 ? '✓' : '(se normaliza al calcular)'); };
+    $$('[data-w]', m).forEach(i => i.oninput = sum); sum();
+    $('#wRst', m).onclick = () => { T.weights = null; saveT(); closeModal(); rTeacher(); };
+    $('#wOk', m).onclick = () => { T.weights = Object.fromEntries($$('[data-w]', m).map(i => [i.dataset.w, +i.value || 0])); saveT(); closeModal(); rTeacher(); };
+  });
+}
+function rTeacherDetail(t, id) {
+  const e = T.entregas[id], d = e.data, U = d.meta.umbral || 100; const ev = T.evals[id] || (T.evals[id] = {scores: {}, comments: {}, general: '', final: null, done: false});
+  const r = rubricRows(d, ev); const F = [...d.fallos].sort((a, b) => (npr(b) || 0) - (npr(a) || 0));
+  t.innerHTML = `<div class="tbar"><button id="tList">← Lista de entregas</button><b style="font-size:17px;flex:1">${esc(d.meta.grupo || 'Grupo')} · ${esc(d.meta.caso === 'libre' ? d.meta.casoTitulo : (CASOS[d.meta.caso] || {}).t || '')}</b><button id="tPrint">🖨 Informe con nota</button></div>
+  <div class="tmain">
+    <div class="card"><b>Alumnos:</b> ${esc(d.meta.alumnos.split('\n').filter(Boolean).join(', ') || '—')} · <b>Curso:</b> ${esc(d.meta.curso || '—')} · <b>Umbral:</b> ${U} · <b>Archivo:</b> ${esc(e.origen)} · <b>Modificado:</b> ${d.meta.actualizado ? new Date(d.meta.actualizado).toLocaleString('es-ES') : '—'}</div>
+    <div class="grid2" style="align-items:start"><div class="card stack"><h3>1 · Mapa del proceso</h3>${mapsBlock(d, 260)}</div>
+      <div class="card stack"><h3>Comprobación de mínimos</h3>${checksHTML(d)}</div></div>
+    <div class="grid2" style="align-items:start"><div class="card"><h3>2 · Equipo</h3><table><tr><th>Miembro</th><th>Papel</th></tr>${d.equipo.map(x => `<tr><td>${esc(x.nombre)}</td><td>${esc(x.rol)}</td></tr>`).join('')}</table></div>
+      <div class="card"><h3>3 · Pasos críticos</h3><table><tr><th>Paso</th><th>Criterio</th><th>Justificación</th></tr>${allNodes(d).map(x => x.n).filter(n => n.critico).map(n => `<tr><td>${esc(nodeName(d, n.id))}</td><td>${esc(n.criterio)}</td><td>${esc(n.just)}</td></tr>`).join('') || '<tr><td colspan="3">—</td></tr>'}</table></div></div>
+    <div class="card"><h3>4–7 · Análisis AMFE y 8 · Acciones</h3><div style="overflow-x:auto"><table><tr><th>Paso</th><th>Modo de fallo</th><th>Efecto</th><th>G</th><th>Causa</th><th>O</th><th>Control</th><th>D</th><th>NPR</th><th>Acción</th><th>Resp. · fecha</th><th>NPR(2)</th></tr>
+      ${F.map(f => `<tr><td>${esc(nodeName(d, f.paso))}</td><td>${esc(f.modo)}</td><td>${esc(f.efecto)}</td><td>${f.G ?? ''}</td><td>${esc(f.causa)}</td><td>${f.O ?? ''}</td><td>${esc(f.control)}</td><td>${f.D ?? ''}</td><td>${nprBadge(npr(f), U, '')}${f.G >= 9 ? '<br><span class="tag warn">⚠</span>' : ''}</td><td>${esc(f.accion)}${f.tipo ? `<div class="small muted">${esc(f.tipo)}</div>` : ''}</td><td class="small">${esc(f.resp)}${f.fecha ? '<br>' + new Date(f.fecha).toLocaleDateString('es-ES') : ''}</td><td>${npr2(f) != null ? nprBadge(npr2(f), U, '') : ''}</td></tr>`).join('')}</table></div></div>
+    <div class="grid2" style="align-items:start"><div class="card"><h3>NPR antes y después</h3>${chartSVG(d)}</div><div class="card"><h3>Matriz G × O</h3>${matrixHTML(d)}${lintAll(d).length ? `<h3 style="margin-top:12px">Avisos automáticos</h3>${lintAll(d).map(x => `<div class="lint" style="margin-top:6px"><b>${esc(x.f.modo || 'Fallo')}</b>${x.w.map(w => `<div>⚠ ${esc(w)}</div>`).join('')}</div>`).join('')}` : ''}</div></div>
+    <div class="card stack"><div class="row" style="justify-content:space-between"><h3>Evaluación</h3><div class="row"><span>Nota calculada: <b id="tCalc">${fmt(r.calc)}</b></span><span class="nota" id="tTot">${fmt(r.total)}</span></div></div>
+      <table class="rub"><tr><th>Criterio</th><th>Qué mirar</th><th>Peso</th><th>Sugerida</th><th>Nota (0–10)</th><th>Comentario</th></tr>
+      ${r.rows.map(x => `<tr><td><b>${esc(x.t)}</b></td><td class="small">${esc(x.q)}</td><td>${x.w} %</td><td>${x.sug}</td><td><div class="row" style="flex-wrap:nowrap"><input type="range" min="0" max="10" step="0.5" data-s="${x.k}" value="${x.v}"><input type="number" min="0" max="10" step="0.5" data-n="${x.k}" value="${x.v}"></div></td><td><input data-c="${x.k}" value="${esc(x.c)}" placeholder="Opcional"></td></tr>`).join('')}</table>
+      <div class="grid2"><div><label>Comentario general para el grupo</label><textarea id="tGen" rows="3">${esc(ev.general)}</textarea></div>
+      <div class="stack"><div><label>Nota final (déjala vacía para usar la calculada)</label><input id="tFin" type="number" min="0" max="10" step="0.1" value="${ev.final ?? ''}"></div><label class="chk"><input type="checkbox" id="tDone" ${ev.done ? 'checked' : ''}> Marcar como evaluada</label></div></div>
+    </div>
+  </div>`;
+  const refresh = () => { const rr = rubricRows(d, ev); $('#tCalc').textContent = fmt(rr.calc); $('#tTot').textContent = fmt(rr.total); saveT(); };
+  $$('[data-s]', t).forEach(i => i.oninput = e => { ev.scores[i.dataset.s] = +e.target.value; $(`[data-n="${i.dataset.s}"]`, t).value = e.target.value; refresh(); });
+  $$('[data-n]', t).forEach(i => i.oninput = e => { const v = Math.max(0, Math.min(10, +e.target.value || 0)); ev.scores[i.dataset.n] = v; $(`[data-s="${i.dataset.n}"]`, t).value = v; refresh(); });
+  $$('[data-c]', t).forEach(i => i.oninput = e => { ev.comments[i.dataset.c] = e.target.value; saveT(); });
+  $('#tGen').oninput = e => { ev.general = e.target.value; saveT(); };
+  $('#tFin').oninput = e => { ev.final = e.target.value === '' ? null : +e.target.value; refresh(); };
+  $('#tDone').onchange = e => { ev.done = e.target.checked; saveT(); };
+  $('#tList').onclick = () => { tSel = null; rTeacher(); };
+  $('#tPrint').onclick = () => printReport(d, ev);
+}
+function qrSVG(text) {
+  const q = new QRLIB.QRCode(-1, QRLIB.L.M); q.addData(text); q.make(); const n = q.getModuleCount(), s = 6, m = 4; let p = '';
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (q.isDark(r, c)) p += `M${(c + m) * s},${(r + m) * s}h${s}v${s}h-${s}z`;
+  const W = (n + 2 * m) * s; return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${W}" width="260" height="260" role="img" aria-label="Código QR"><rect width="${W}" height="${W}" fill="#fff"/><path d="${p}" fill="#1C2530"/></svg>`;
+}
+function shareModal() {
+  const base = location.href.split('#')[0].split('?')[0];
+  modal(`<h3>Compartir con la clase</h3><p class="small">Elige el caso y el umbral: el enlace abre la app con esos datos ya puestos. Proyecta el código QR o pega el enlace en Classroom.</p>
+  <div class="grid3"><div><label>Caso</label><select id="shC"><option value="">Que lo elijan ellos</option>${Object.entries(CASOS).filter(([k]) => k !== 'libre').map(([k, c]) => `<option value="${k}">Caso ${k} · ${esc(c.t)}</option>`).join('')}</select></div><div><label>Umbral de NPR</label><input id="shU" type="number" value="100"></div><div><label>Curso</label><input id="shK" placeholder="Opcional"></div></div>
+  <div class="row" style="align-items:flex-start;gap:20px"><div class="qr" id="shQ"></div><div class="stack" style="flex:1"><label>Enlace</label><textarea id="shL" rows="3" readonly></textarea><button class="pri" id="shCp">Copiar enlace</button>${/^https?:/.test(base) ? '' : '<p class="small" style="color:#B03A2E">Estás abriendo la app desde un archivo de tu ordenador: el enlace solo funcionará cuando la app esté publicada en internet (GitHub Pages).</p>'}</div></div>
+  <div class="row" style="justify-content:flex-end"><button data-close>Cerrar</button></div>`, m => {
+    const upd = () => { const q = new URLSearchParams(); const c = $('#shC', m).value, u = $('#shU', m).value, k = $('#shK', m).value.trim(); if (c) q.set('caso', c); if (u && u !== '100') q.set('umbral', u); if (k) q.set('curso', k); const url = base + (q.toString() ? '?' + q : ''); $('#shL', m).value = url; try { $('#shQ', m).innerHTML = qrSVG(url); } catch (e) { $('#shQ', m).textContent = 'No se ha podido generar el QR'; } };
+    ['#shC', '#shU', '#shK'].forEach(s => $(s, m).oninput = $(s, m).onchange = upd); upd();
+    $('#shCp', m).onclick = () => { copyText($('#shL', m).value); toast('Enlace copiado'); };
+  });
+}
+function exportCSV() {
+  const W = weights(); const rows = [['Grupo', 'Alumnos', 'Curso', 'Caso', 'Fallos', 'Mínimos cumplidos', ...W.map(r => r.t + ' (' + r.w + ' %)'), 'Nota calculada', 'Nota final', 'Evaluada', 'Comentario general']];
+  Object.entries(T.entregas).forEach(([id, e]) => { const d = e.data, ev = T.evals[id], r = rubricRows(d, ev);
+    rows.push([d.meta.grupo, d.meta.alumnos.split('\n').filter(Boolean).join(', '), d.meta.curso, d.meta.caso === 'libre' ? d.meta.casoTitulo : 'Caso ' + d.meta.caso, d.fallos.length, checks(d).filter(c => c.s === 'ok').length + '/8', ...r.rows.map(x => fmt(x.v)), fmt(r.calc), fmt(r.total), ev && ev.done ? 'Sí' : 'No', ev ? ev.general : '']); });
+  const csv = '﻿' + rows.map(r => r.map(c => '"' + String(c ?? '').replace(/"/g, '""') + '"').join(';')).join('\r\n');
+  download('AMFE_notas_' + new Date().toISOString().slice(0, 10) + '.csv', csv, 'text/csv');
+}
+
+/* ---------- Deshacer / rehacer ---------- */
+let hist = [], hi = -1, histT = null, restoring = false;
+const snap = () => JSON.stringify(S, (k, v) => k === 'actualizado' ? undefined : v);
+function pushHist() { if (restoring) return; const s = snap(); if (hist[hi] === s) return; hist = hist.slice(0, hi + 1); hist.push(s); if (hist.length > 80) hist.shift(); hi = hist.length - 1; updUndo(); }
+function schedHist() { clearTimeout(histT); histT = setTimeout(pushHist, 450); }
+function updUndo() { $('#btnUndo').disabled = hi <= 0; $('#btnRedo').disabled = hi >= hist.length - 1; $('#btnUndo').style.opacity = hi <= 0 ? .4 : 1; $('#btnRedo').style.opacity = hi >= hist.length - 1 ? .4 : 1; }
+function restore(i) { clearTimeout(histT); pushHist(); if (i < 0 || i >= hist.length) return; hi = i; restoring = true; S = normalize(JSON.parse(hist[hi])); save(); hist[hi] = snap(); restoring = false; sel = null; connectFrom = null; render(); updUndo(); }
+$('#btnUndo').onclick = () => restore(hi - 1);
+$('#btnRedo').onclick = () => restore(hi + 1);
+$('#btnSave').onclick = () => saveReport(S);
+document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's' && $('#teacher').hidden) { e.preventDefault(); saveReport(S); } });
+document.addEventListener('keydown', e => { if (!$('#teacher').hidden || /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return; const k = e.key.toLowerCase();
+  if ((e.ctrlKey || e.metaKey) && k === 'z' && !e.shiftKey) { e.preventDefault(); restore(hi - 1); } else if ((e.ctrlKey || e.metaKey) && (k === 'y' || (k === 'z' && e.shiftKey))) { e.preventDefault(); restore(hi + 1); } });
+$('#btnHelp').onclick = () => modal(`<h3>Ayuda y glosario del AMFE</h3>
+  <dl class="helpg">
+  <dt>Modo de fallo</dt><dd>Cómo deja el equipo de hacer su función. <i>Ej.: el rodillo alimentador patina.</i></dd>
+  <dt>Efecto</dt><dd>Lo que provoca el fallo cuando ocurre: parada, piezas malas, riesgo. <i>Ej.: paso incorrecto y golpe en el troquel.</i></dd>
+  <dt>Causa</dt><dd>Por qué ocurre el fallo. <i>Ej.: rodillos desgastados o presión de apriete baja.</i></dd>
+  <dt>Control actual</dt><dd>Lo que existe hoy para verlo venir antes del efecto. <i>Ej.: detector de paso que para la prensa.</i></dd>
+  <dt>G · Gravedad</dt><dd>Lo grave que es el efecto. Si hay varios, el más grave.</dd>
+  <dt>O · Ocurrencia</dt><dd>Con qué frecuencia ocurre: histórico, MTBF, órdenes de trabajo.</dd>
+  <dt>D · Detección</dt><dd>Al revés: cuanto más difícil de detectar, más alta.</dd>
+  <dt>NPR</dt><dd>G × O × D, de 1 a 1000. A partir del umbral (normalmente 100) hay que actuar.</dd>
+  <dt>Mapa de detalle</dt><dd>Un bloque del mapa se puede abrir en mini procesos (doble clic o «Crear mapa de detalle»), cada uno con sus fallos.</dd>
+  </dl>
+  <h3>Atajos</h3><p class="small">Ctrl/Cmd + Z deshacer · Ctrl/Cmd + Y rehacer · Supr borrar el bloque o la flecha seleccionados · doble clic en un bloque para abrir su detalle.</p>
+  <p class="small muted">AMFE de mantenimiento v${VERSION} · Licencia MIT · Todo se guarda solo en este navegador.</p>
+  <div class="row" style="justify-content:flex-end"><button class="pri" data-close>Cerrar</button></div>`);
+
+/* ---------- Arranque ---------- */
+function applyParams() {
+  const p = new URLSearchParams(location.search);
+  if (p.get('caso') && CASOS[p.get('caso')] && !S.meta.caso) S.meta.caso = p.get('caso');
+  if (p.get('umbral') && num(p.get('umbral'))) S.meta.umbral = num(p.get('umbral'));
+  if (p.get('curso') && !S.meta.curso) S.meta.curso = p.get('curso');
+}
+applyParams();
+if (location.hash === '#profesor') setTimeout(openTeacher, 0);
+render(); pushHist();
+$('#saved').textContent = localStorage.getItem(KEY) ? 'Recuperado de este navegador' : '';
+</script>
+</body>
+</html>
