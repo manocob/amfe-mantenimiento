@@ -74,6 +74,11 @@ svg .edge.sel line{stroke:var(--or)}
 .fallo .fh{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .fallo .fh .n{font-weight:800;color:var(--or2);font-size:18px;min-width:34px}
 .fgrid{display:grid;grid-template-columns:1fr 1fr 150px;gap:10px 14px;align-items:start}
+.efbox{grid-column:1/-1;background:#F7F5F0;border:1px solid #E4DFD5;border-radius:10px;padding:10px 12px}
+.efr{display:grid;grid-template-columns:190px 1fr 190px 34px;gap:8px;align-items:start;margin-bottom:8px}
+.efr .selhelp{margin-top:2px}
+.efhead{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.gmax{font-weight:700;color:#B04E17}
 .npr{display:inline-flex;align-items:center;justify-content:center;min-width:86px;padding:6px 12px;border-radius:999px;font-weight:800;font-size:15px;background:var(--line);color:var(--ink)}
 .npr.lo{background:#D8EBDD;color:#1E5A38}.npr.mid{background:#F6DFC4;color:#7A4A12}.npr.hi{background:#F2CFCB;color:#7D2219}
 .tag{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:3px 9px;background:var(--soft);color:var(--bl2)}
@@ -148,6 +153,10 @@ svg .edge.sel line{stroke:var(--or)}
   .mx{max-width:100%}
   select{max-width:100%}
   td select{min-width:150px}
+  .efr{grid-template-columns:1fr 34px}
+  .efr>textarea,.efr>div{grid-column:1/-1}
+  .efr>[data-delef]{grid-row:1;grid-column:2}
+  .efr+.efr{border-top:1px dashed #D5CFC3;padding-top:10px}
   .canvas{overflow-x:auto;touch-action:pan-x pan-y}
   .canvas svg{min-width:760px}
   td textarea,td input:not([type=checkbox]):not([type=range]){min-width:190px}
@@ -1444,7 +1453,7 @@ return {QRCode:req('./index'),L:req('./QRErrorCorrectLevel')};})();
    Una sola página, sin registro y sin servidor: todo se guarda en el
    navegador. Licencia MIT.
    ============================================================ */
-const VERSION = '1.3';
+const VERSION = '1.4';
 const KEY = 'amfe-mant-v1', TKEY = 'amfe-mant-profe-v1';
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -1472,6 +1481,18 @@ const NODE_TYPES = {
 const ROLES = ['Coordinador', 'Mantenimiento mecánico', 'Mantenimiento eléctrico', 'Producción / operador', 'Calidad', 'Seguridad', 'Otro'];
 const CRITERIOS = ['Salud y seguridad', 'Calidad', 'Disponibilidad'];
 const TIPOS_ACC = ['Preventiva', 'Correctiva', 'De mejora'];
+const ESTADOS = ['Pendiente', 'En curso', 'Hecha'];
+const PERSP_DEF = ['Salud y seguridad', 'Calidad', 'Disponibilidad', 'Medio ambiente', 'Coste'];
+const persps = (d = S) => PERSP_DEF.concat((d && d.perspectivas) || []);
+const mkEf = (persp = '', texto = '', G = null) => ({id: uid(), persp, texto, G});
+function syncEf(f) {
+  const E = (f.efectos || []).filter(e => (e.texto || '').trim() || e.G);
+  const g = E.map(e => e.G || 0); f.G = g.length && Math.max(...g) ? Math.max(...g) : null;
+  f.efecto = E.filter(e => (e.texto || '').trim()).map(e => (e.persp ? e.persp + ': ' : '') + e.texto.trim()).join(' · ');
+}
+const efList = f => (f.efectos || []).filter(e => (e.texto || '').trim());
+function efHtml(f) { const L = efList(f); if (!L.length) return esc(f.efecto || ''); return L.map(e => `${e.persp ? `<b>${esc(e.persp)}:</b> ` : ''}${esc(e.texto)}${L.length > 1 && e.G ? ` <span class="small">(G ${e.G})</span>` : ''}`).join('<br>'); }
+function ctrlHtml(f) { return (f.prev || '').trim() ? `<span class="small">Prevención:</span> ${esc(f.prev)}<br><span class="small">Detección:</span> ${esc(f.control)}` : esc(f.control); }
 const SCALES = {
   G: {name: 'Gravedad', rows: [[9,10,'Catastrófico','Peligro para el operador o el equipo'],[6,8,'Grave','Pérdidas de producción o producto con costes importantes'],[3,5,'Moderado','Parte del producto se reprocesa o pérdidas leves'],[1,2,'Menor','Efecto leve o ninguno']]},
   O: {name: 'Ocurrencia', rows: [[9,10,'Frecuente','Fallos persistentes'],[6,8,'Ocasional','Fallos de vez en cuando'],[3,5,'Infrecuente','Pocos fallos'],[1,2,'Remoto','Fallo improbable']]},
@@ -1583,7 +1604,7 @@ function ejemploEstampacion() {
   ];
   [[110,110],[425,110],[740,110],[740,280],[530,280],[320,280],[110,280]].forEach(([x, y], i) => { L1[i].x = x; L1[i].y = y; });
   const F = (id, paso, modo, efecto, G, causa, O, control, D, accion = '', tipo = '', resp = '', fecha = '', G2 = null, O2 = null, D2 = null) => ({id, paso, modo, efecto, G, causa, O, control, D, accion, tipo, resp, fecha, G2, O2, D2});
-  return {
+  const D = {
     v: 1, app: 'amfe-mantenimiento',
     meta: {grupo: 'Ejemplo resuelto · Estampación', alumnos: 'Profesor', curso: '', caso: 'libre', casoTitulo: 'Línea de estampación transfer alimentada por bobina (4 operaciones)',
       casoDesc: 'La planta fabrica un soporte de amortiguador de acero DC04 de 1,5 mm. El proveedor entrega bobinas que se guardan en el almacén; la línea de estampación (devanadora, aplanadora, lubricadora, alimentador y prensa transfer de 800 t con 4 operaciones) produce las piezas, que esperan en jaulas hasta la línea de ensamblaje. El producto terminado se almacena y se envía al cliente cada día. Ejemplo inventado para clase: los datos no son reales.',
@@ -1607,6 +1628,17 @@ function ejemploEstampacion() {
       F('x14','s7','Corte en las manos al coger las piezas','Lesión del operario',9,'Bordes con rebaba y guantes poco adecuados',3,'Uso obligatorio de guantes',5,'Guantes anticorte de nivel 5 y mesa de recogida a la altura de la cinta','Preventiva','Elena','2026-12-04',9,2,3)
     ]
   };
+  // Algunos fallos analizados desde varias perspectivas (la G del fallo es la mayor)
+  const EF = {
+    x2: [['Salud y seguridad','La chapa forma un bucle y puede cortar al operario',9],['Disponibilidad','Hay que parar y volver a enhebrar la bobina (unos 30 min)',5]],
+    x4: [['Calidad','La OP10 embute en seco y las piezas salen agrietadas',8],['Coste','El troquel se desgasta antes y hay que repararlo',6],['Medio ambiente','Se derrama aceite en el suelo al desatascar las boquillas',4]],
+    x10: [['Disponibilidad','Rotura del troquel: semanas de parada de la línea',8],['Coste','Reparación del troquel muy cara',7],['Salud y seguridad','Proyección de trozos de retal o del punzón',8]],
+    x14: [['Salud y seguridad','Lesión del operario',9],['Disponibilidad','Baja del operario y puesto sin cubrir',4]]
+  };
+  const PV = {x4: 'Rellenado del depósito al inicio de turno', x5: 'Limpieza de rodillos semanal', x7: 'Engrase de las barras transfer', x11: 'Sustitución de punzones cuando se rompen'};
+  D.fallos.forEach(f => { f.efectos = (EF[f.id] || [['', f.efecto, f.G]]).map(([p, t, g]) => mkEf(p, t, g)); syncEf(f); if (PV[f.id]) f.prev = PV[f.id]; });
+  D.fallos.find(f => f.id === 'x1').estado = 'En curso'; D.fallos.find(f => f.id === 'x3').estado = 'Hecha';
+  return D;
 }
 
 function plantilla(caso) {
@@ -1622,7 +1654,7 @@ function plantilla(caso) {
 function blank() {
   return {v: 1, app: 'amfe-mantenimiento', meta: {grupo: '', alumnos: '', curso: '', caso: '', casoTitulo: '', casoDesc: '', umbral: 100, creado: new Date().toISOString(), actualizado: ''}, mapa: {nodes: [], edges: []}, equipo: [], fallos: []};
 }
-function newFallo(paso = '') { return {id: uid(), paso, modo: '', efecto: '', G: null, causa: '', O: null, control: '', D: null, accion: '', tipo: '', resp: '', fecha: '', G2: null, O2: null, D2: null}; }
+function newFallo(paso = '') { return {id: uid(), paso, modo: '', efecto: '', G: null, efectos: [mkEf()], causa: '', O: null, prev: '', control: '', D: null, accion: '', tipo: '', resp: '', fecha: '', estado: '', G2: null, O2: null, D2: null}; }
 
 /* ---------- Estado y guardado ---------- */
 let S = load() || blank();
@@ -1643,7 +1675,8 @@ function normalize(d) {
   if (!d || typeof d !== 'object') return b;
   d.meta = Object.assign(b.meta, d.meta || {});
   d.mapa = d.mapa || {nodes: [], edges: []}; d.mapa.nodes = d.mapa.nodes || []; d.mapa.edges = d.mapa.edges || [];
-  d.equipo = d.equipo || []; d.fallos = (d.fallos || []).map(f => Object.assign(newFallo(), f));
+  d.equipo = d.equipo || []; d.perspectivas = Array.isArray(d.perspectivas) ? d.perspectivas : [];
+  d.fallos = (d.fallos || []).map(f => { const x = Object.assign(newFallo(), f); if (!Array.isArray(f.efectos) || !f.efectos.length) x.efectos = [mkEf('', f.efecto || '', f.G ?? null)]; else x.efectos = f.efectos.map(e => Object.assign(mkEf(), e)); return x; });
   walk(d.mapa, n => { if (n.sub) { n.sub.nodes = n.sub.nodes || []; n.sub.edges = n.sub.edges || []; } });
   d.v = 1; d.app = 'amfe-mantenimiento';
   return d;
@@ -1716,6 +1749,8 @@ function renderSteps() {
 }
 $('#steps').addEventListener('click', e => { const b = e.target.closest('[data-step]'); if (b) go(b.dataset.step); });
 function go(k) { if (k !== 'mapa') mapPath = []; step = k; sel = null; connectMode = false; connectFrom = null; render(); window.scrollTo(0, 0); }
+function spell(root = document) { $$('textarea, input:not([type]), input[type=text]', root).forEach(x => { if (!x.hasAttribute('spellcheck')) { x.spellcheck = true; x.lang = 'es'; x.setAttribute('autocapitalize', 'sentences'); } }); }
+new MutationObserver(() => spell()).observe(document.documentElement, {childList: true, subtree: true});
 function render() {
   renderWho(); renderSteps();
   const f = {inicio: rInicio, mapa: rMapa, equipo: rEquipo, criticos: rCriticos, amfe: rAmfe, acciones: rAcciones, entrega: rEntrega}[step];
@@ -1992,13 +2027,18 @@ function pasoOpts(cur) {
 function lint(f, U) {
   const w = [], v = npr(f), v2 = npr2(f), sinCtrl = !f.control.trim() || /^(ningun|ninguno|nada|no hay|sin control|no existe)/i.test(f.control.trim());
   if ((f.efecto.trim() || f.causa.trim()) && !f.modo.trim()) w.push('Falta el modo de fallo: cómo deja el equipo de hacer su función.');
-  if (f.modo.trim() && f.efecto.trim() && f.modo.trim().toLowerCase() === f.efecto.trim().toLowerCase()) w.push('El efecto repite el modo de fallo: el efecto es lo que provoca (parada, piezas malas, riesgo).');
+  if (f.modo.trim() && efList(f).some(e => e.texto.trim().toLowerCase() === f.modo.trim().toLowerCase())) w.push('El efecto repite el modo de fallo: el efecto es lo que provoca (parada, piezas malas, riesgo).');
+  if ((f.efectos || []).some(e => (e.texto || '').trim() && !e.G)) w.push('Hay un efecto sin gravedad: valorad G en cada perspectiva.');
+  if ((f.efectos || []).some(e => e.G && !(e.texto || '').trim())) w.push('Hay una gravedad sin efecto descrito.');
+  { const P = (f.efectos || []).map(e => e.persp).filter(Boolean); if (new Set(P).size < P.length) w.push('La misma perspectiva aparece dos veces: juntad esos efectos en uno.'); }
+  if (efList(f).length > 1 && (f.efectos || []).some(e => (e.texto || '').trim() && !e.persp)) w.push('Con varios efectos, indicad la perspectiva de cada uno.');
   if (f.D && sinCtrl && f.D < 6) w.push(`Sin control actual, la detección debería ser alta (6–10), no ${f.D}.`);
   if (f.G >= 9 && v != null && v < U) w.push('Fallo de seguridad con NPR bajo el umbral: valorad acciones igualmente.');
   if (f.accion.trim() && v2 == null) w.push('Hay acción pero falta el nuevo G, O y D.');
   if (v != null && v2 != null && v2 >= v) w.push('La acción no reduce el NPR: revisad la acción o los nuevos valores.');
   if (f.G2 && f.G && f.G2 !== f.G) w.push('La gravedad no suele cambiar con una acción, salvo que se modifique el diseño.');
   if (v != null && v >= U && !f.accion.trim()) w.push(`NPR ≥ ${U}: hace falta una acción en el paso 8.`);
+  if (f.accion.trim() && !f.resp.trim()) w.push('La acción no tiene responsable.');
   return w;
 }
 const lintHtml = (f, U) => lint(f, U).map(x => `<div>⚠ ${esc(x)}</div>`).join('');
@@ -2016,7 +2056,7 @@ function rAmfe(el) {
   <div class="min" style="margin-top:14px"><b>Mínimo:</b><ul><li><b>Paso 4:</b> al menos 4 fallos, cada uno con un efecto concreto y su gravedad (si hay varios efectos, el más grave).</li><li><b>Paso 5:</b> una causa por fallo y la ocurrencia según la frecuencia del caso o el histórico.</li><li><b>Paso 6:</b> el control que existe hoy y la detección <b>al revés</b>: si no hay control, valor alto.</li><li><b>Paso 7:</b> NPR = G × O × D. A partir de ${U} hay que actuar; comentad también los fallos de seguridad aunque no lleguen.</li></ul></div>
   ${nav('criticos', 'acciones')}`;
   const ff = $('#fFil'); if (ff) ff.onchange = e => { fFilter = e.target.value; render(); };
-  const bi = $('#bImp'); if (bi) bi.onclick = () => ask(`Se añadirán ${caseF().length} fallos del caso con el modo, el efecto, la frecuencia y el control ya escritos. Vosotros asignáis el paso, la causa y los valores de G, O y D. ¿Seguir?`, () => { caseF().forEach(r => S.fallos.push(Object.assign(newFallo(), {modo: r[0], efecto: r[1], frec: r[2], control: r[3]}))); save(); render(); });
+  const bi = $('#bImp'); if (bi) bi.onclick = () => ask(`Se añadirán ${caseF().length} fallos del caso con el modo, el efecto, la frecuencia y el control ya escritos. Vosotros asignáis el paso, la causa y los valores de G, O y D. ¿Seguir?`, () => { caseF().forEach(r => { const x = Object.assign(newFallo(), {modo: r[0], frec: r[2], control: r[3]}); x.efectos = [mkEf('', r[1], null)]; syncEf(x); S.fallos.push(x); }); save(); render(); });
   $('#addF').onclick = () => { S.fallos.push(newFallo(fFilter)); save(); render(); setTimeout(() => { const c = $$('.fallo').pop(); if (c) { c.scrollIntoView({behavior: 'smooth', block: 'center'}); $('[data-f=modo]', c).focus(); } }, 50); };
   $('#bSort').onclick = () => { S.fallos.sort((a, b) => (npr(b) || 0) - (npr(a) || 0)); save(); render(); };
   $('#bEsc').onclick = showScales;
@@ -2029,15 +2069,35 @@ function falloCard(f, i, U) {
       <span data-npr>${nprBadge(v, U)}</span><span data-flag>${flagHtml(f, U)}</span>
       <button class="ghost" data-dup title="Duplicar">⧉</button><button class="ghost danger" data-del title="Borrar">✕</button></div>
     <div class="fgrid">
-      <div><label>4 · Modo de fallo</label><textarea data-f="modo" rows="2" placeholder="¿Cómo deja el equipo de hacer lo que debe?">${esc(f.modo)}</textarea></div>
-      <div><label>Efecto</label><textarea data-f="efecto" rows="2" placeholder="¿Qué pasa cuando ocurre? Parada, piezas malas, riesgo…">${esc(f.efecto)}</textarea></div>
-      <div><label>G · Gravedad</label>${selGOD('G', f.G, 'G')}</div>
+      <div style="grid-column:1/-1"><label>4 · Modo de fallo</label><textarea data-f="modo" rows="2" placeholder="¿Cómo deja el equipo de hacer lo que debe?">${esc(f.modo)}</textarea></div>
+      <div class="efbox"><div class="efhead"><label style="margin:0">Efectos y gravedad · un efecto por perspectiva</label><span class="small">G del fallo (la mayor): <span class="gmax" data-gmax>${f.G ?? '—'}</span></span></div>
+        <div data-efs>${f.efectos.map(efRow).join('')}</div>
+        <button class="ghost" data-addef>+ Analizar desde otra perspectiva</button></div>
       <div><label>5 · Causa</label><textarea data-f="causa" rows="2" placeholder="¿Por qué ocurre?">${esc(f.causa)}</textarea></div>
       <div><label>Frecuencia o histórico (opcional)</label><textarea data-f="frec" rows="2" placeholder="Veces al año, MTBF…">${esc(f.frec || '')}</textarea></div>
       <div><label>O · Ocurrencia</label>${selGOD('O', f.O, 'O')}</div>
-      <div style="grid-column:span 2"><label>6 · Control actual</label><textarea data-f="control" rows="2" placeholder="¿Qué control existe hoy para verlo venir?">${esc(f.control)}</textarea></div>
+      <div><label>Control de prevención (opcional)</label><textarea data-f="prev" rows="2" placeholder="¿Qué evita hoy que ocurra? Engrase, revisión…">${esc(f.prev || '')}</textarea></div>
+      <div><label>6 · Control de detección</label><textarea data-f="control" rows="2" placeholder="¿Qué control existe hoy para verlo venir?">${esc(f.control)}</textarea></div>
       <div><label>D · Detección</label>${selGOD('D', f.D, 'D')}</div>
     </div><div class="lint" data-lint>${lintHtml(f, U)}</div></div>`;
+}
+function perspOpts(cur) { const L = persps(); return `<option value="">Perspectiva…</option>${L.map(p => `<option ${cur === p ? 'selected' : ''}>${esc(p)}</option>`).join('')}${cur && !L.includes(cur) ? `<option selected>${esc(cur)}</option>` : ''}<option value="__new">＋ Nueva perspectiva…</option>`; }
+function efRow(e) {
+  return `<div class="efr" data-eid="${e.id}"><select data-e="persp">${perspOpts(e.persp)}</select>
+    <textarea data-e="texto" rows="2" placeholder="¿Qué pasa desde esta perspectiva? Parada, piezas malas, riesgo…">${esc(e.texto)}</textarea>
+    <div><select data-e="G"><option value="">G —</option>${[10,9,8,7,6,5,4,3,2,1].map(x => `<option value="${x}" ${e.G === x ? 'selected' : ''}>${x} · ${catOf('G', x)[2]}</option>`).join('')}</select><div class="selhelp" data-ehelp>${e.G ? esc(catOf('G', e.G)[3]) : ''}</div></div>
+    <button class="ghost danger" data-delef title="Quitar esta perspectiva">✕</button></div>`;
+}
+function newPersp(cb) {
+  const own = () => (S.perspectivas || []).map((p, i) => `<div class="row" style="justify-content:space-between;border-bottom:1px solid #eee;padding:4px 0"><span>${esc(p)}</span><button class="ghost danger" data-dp="${i}">Quitar</button></div>`).join('') || '<p class="small muted">Todavía no habéis añadido ninguna.</p>';
+  modal(`<h3>Nueva perspectiva</h3><p class="small muted">Las perspectivas son los puntos de vista desde los que se valora el efecto del fallo. Ya están: ${PERSP_DEF.join(', ')}. Añadid otras si las necesitáis, por ejemplo «Cliente», «Imagen de la empresa» o «Energía».</p>
+    <input id="npIn" maxlength="40" placeholder="Nombre de la perspectiva" spellcheck="true" lang="es">
+    <h4 style="margin:12px 0 4px">Perspectivas añadidas por vosotros</h4><div id="npOwn">${own()}</div>
+    <div class="row" style="justify-content:flex-end;margin-top:10px"><button data-close>Cancelar</button><button class="pri" id="npOk">Añadir</button></div>`, m => {
+    const bindOwn = () => $$('[data-dp]', m).forEach(b => b.onclick = () => { S.perspectivas.splice(+b.dataset.dp, 1); save(); $('#npOwn', m).innerHTML = own(); bindOwn(); });
+    bindOwn(); const inp = $('#npIn', m); setTimeout(() => inp.focus(), 30);
+    const ok = () => { const v = inp.value.trim().replace(/\s+/g, ' '); if (!v) return; const ex = persps().find(p => p.toLowerCase() === v.toLowerCase()); if (!ex) S.perspectivas.push(v); closeModal(); cb(ex || v); };
+    $('#npOk', m).onclick = ok; inp.onkeydown = e => { if (e.key === 'Enter') ok(); }; });
 }
 function flagHtml(f, U) { const v = npr(f); let s = ''; if (v != null) s += v >= U ? '<span class="tag warn">Requiere acción</span> ' : '<span class="tag ok">Bajo el umbral</span> '; if (f.G >= 9) s += '<span class="tag warn">⚠ Seguridad</span>'; return s; }
 function bindFallos(el, U) {
@@ -2045,7 +2105,16 @@ function bindFallos(el, U) {
     $$('[data-f]', card).forEach(i => i.oninput = i.onchange = e => { const k = e.target.dataset.f; f[k] = ['G','O','D'].includes(k) ? num(e.target.value) : e.target.value; save(); $('[data-lint]', card).innerHTML = lintHtml(f, U);
       if (['G','O','D'].includes(k)) { $(`[data-help="${k}"]`, card).textContent = f[k] ? catOf(k, f[k])[3] : ''; $('[data-npr]', card).innerHTML = nprBadge(npr(f), U); $('[data-flag]', card).innerHTML = flagHtml(f, U); } });
     $('[data-del]', card).onclick = () => ask('¿Borrar este fallo?', () => { S.fallos = S.fallos.filter(x => x !== f); save(); render(); });
-    $('[data-dup]', card).onclick = () => { const c = Object.assign({}, f, {id: uid()}); S.fallos.splice(S.fallos.indexOf(f) + 1, 0, c); save(); render(); };
+    $('[data-dup]', card).onclick = () => { const c = Object.assign({}, f, {id: uid(), efectos: f.efectos.map(e => Object.assign({}, e, {id: uid()}))}); S.fallos.splice(S.fallos.indexOf(f) + 1, 0, c); save(); render(); };
+    const refresh = () => { syncEf(f); save(); $('[data-lint]', card).innerHTML = lintHtml(f, U); $('[data-gmax]', card).textContent = f.G ?? '—'; $('[data-npr]', card).innerHTML = nprBadge(npr(f), U); $('[data-flag]', card).innerHTML = flagHtml(f, U); };
+    $$('.efr', card).forEach(row => { const e = f.efectos.find(x => x.id === row.dataset.eid);
+      $$('[data-e]', row).forEach(i => i.oninput = i.onchange = ev => { const k = ev.target.dataset.e;
+        if (k === 'persp' && ev.target.value === '__new') { ev.target.value = e.persp; newPersp(name => { e.persp = name; syncEf(f); save(); render(); }); return; }
+        e[k] = k === 'G' ? num(ev.target.value) : ev.target.value;
+        if (k === 'G') $('[data-ehelp]', row).textContent = e.G ? catOf('G', e.G)[3] : '';
+        refresh(); });
+      $('[data-delef]', row).onclick = () => { if (f.efectos.length > 1) f.efectos = f.efectos.filter(x => x !== e); else f.efectos = [mkEf()]; syncEf(f); save(); render(); }; });
+    $('[data-addef]', card).onclick = () => { const used = f.efectos.map(e => e.persp); f.efectos.push(mkEf(persps().find(p => !used.includes(p)) || '')); save(); render(); setTimeout(() => { const r = $$('.efr', $(`.fallo[data-fid="${f.id}"]`)).pop(); if (r) $('[data-e=texto]', r).focus(); }, 40); };
   });
 }
 function showScales() {
@@ -2071,6 +2140,7 @@ function rAcciones(el) {
         <div><label>Tipo</label><select data-f="tipo"><option value="">—</option>${TIPOS_ACC.map(t => `<option ${f.tipo === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
         <div><label>Responsable</label><input data-f="resp" list="dlResp" value="${esc(f.resp)}"></div>
         <div><label>Fecha</label><input data-f="fecha" type="date" value="${esc(f.fecha)}"></div>
+        <div><label>Estado</label><select data-f="estado"><option value="">—</option>${ESTADOS.map(t => `<option ${f.estado === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
         <div><label>&nbsp;</label><button data-copy title="Copiar G, O y D iniciales">Copiar G, O, D iniciales</button></div>
         <div><label>G (2)</label>${selGOD('G', f.G2, 'G2')}</div><div><label>O (2)</label>${selGOD('O', f.O2, 'O2')}</div><div><label>D (2)</label>${selGOD('D', f.D2, 'D2')}</div>
       </div><div class="lint" data-lint>${lintHtml(f, U)}</div></div>`; }).join('') || '<div class="hint">Todavía no hay fallos. Añadidlos en el análisis AMFE.</div>'}</div>
@@ -2110,8 +2180,8 @@ function matrixHTML(d) {
 }
 function lintAll(d) { const U = d.meta.umbral || 100; return [...d.fallos].map((f, i) => ({f, i, w: lint(f, U)})).filter(x => x.w.length); }
 function csvAmfe(d) {
-  const rows = [['Nº', 'Paso', 'Modo de fallo', 'Efecto', 'G', 'Causa', 'O', 'Control actual', 'D', 'NPR', 'Acción', 'Tipo', 'Responsable', 'Fecha', 'G2', 'O2', 'D2', 'NPR2']];
-  [...d.fallos].sort((a, b) => (npr(b) || 0) - (npr(a) || 0)).forEach((f, i) => rows.push([i + 1, nodeName(d, f.paso), f.modo, f.efecto, f.G, f.causa, f.O, f.control, f.D, npr(f), f.accion, f.tipo, f.resp, f.fecha, f.G2, f.O2, f.D2, npr2(f)]));
+  const rows = [['Nº', 'Paso', 'Modo de fallo', 'Efectos por perspectiva', 'G', 'Causa', 'O', 'Control de prevención', 'Control de detección', 'D', 'NPR', 'Acción', 'Tipo', 'Responsable', 'Fecha', 'Estado', 'G2', 'O2', 'D2', 'NPR2']];
+  [...d.fallos].sort((a, b) => (npr(b) || 0) - (npr(a) || 0)).forEach((f, i) => rows.push([i + 1, nodeName(d, f.paso), f.modo, efList(f).map(e => (e.persp ? e.persp + ': ' : '') + e.texto + (e.G ? ` (G ${e.G})` : '')).join(' | ') || f.efecto, f.G, f.causa, f.O, f.prev || '', f.control, f.D, npr(f), f.accion, f.tipo, f.resp, f.fecha, f.estado || '', f.G2, f.O2, f.D2, npr2(f)]));
   return '\ufeff' + rows.map(r => r.map(c => '"' + String(c ?? '').replace(/"/g, '""') + '"').join(';')).join('\r\n');
 }
 function checksHTML(d) { return `<div class="checks">${checks(d).map((c, i) => `<div class="ck ${c.s}"><span class="i">${c.s === 'ok' ? '✓' : c.s === 'part' ? '!' : '✕'}</span><div><b>${i + 1}. ${esc(c.t)}</b><div class="d">${esc(c.d)}</div></div></div>`).join('')}</div>`; }
@@ -2159,11 +2229,11 @@ function reportHTML(d, ev) {
   <table><tr><th>Miembro</th><th>Papel</th></tr>${d.equipo.map(x => `<tr><td>${esc(x.nombre)}</td><td>${esc(x.rol)}</td></tr>`).join('')}</table>
   <table style="margin-top:6px"><tr><th>Paso crítico</th><th>Criterio</th><th>Justificación</th></tr>${allNodes(d).map(x => x.n).filter(n => n.critico).map(n => `<tr><td>${esc(nodeName(d, n.id))}</td><td>${esc(n.criterio)}</td><td>${esc(n.just)}</td></tr>`).join('') || '<tr><td colspan="3">Sin pasos críticos</td></tr>'}</table>
   <h2 class="pb" style="font-size:13pt;margin:12px 0 6px">4–7. Análisis AMFE</h2>
-  <table><tr><th>#</th><th>Paso</th><th>Modo de fallo</th><th>Efecto</th><th>G</th><th>Causa</th><th>O</th><th>Control actual</th><th>D</th><th>NPR</th></tr>
-  ${F.map((f, i) => `<tr><td>${i + 1}</td><td>${esc(nodeName(d, f.paso))}</td><td>${esc(f.modo)}</td><td>${esc(f.efecto)}</td><td>${f.G ?? ''}</td><td>${esc(f.causa)}</td><td>${f.O ?? ''}</td><td>${esc(f.control)}</td><td>${f.D ?? ''}</td><td>${nprBadge(npr(f), U, '')}</td></tr>`).join('')}</table>
+  <table><tr><th>#</th><th>Paso</th><th>Modo de fallo</th><th>Efecto</th><th>G</th><th>Causa</th><th>O</th><th>Controles actuales</th><th>D</th><th>NPR</th></tr>
+  ${F.map((f, i) => `<tr><td>${i + 1}</td><td>${esc(nodeName(d, f.paso))}</td><td>${esc(f.modo)}</td><td>${efHtml(f)}</td><td>${f.G ?? ''}</td><td>${esc(f.causa)}</td><td>${f.O ?? ''}</td><td>${ctrlHtml(f)}</td><td>${f.D ?? ''}</td><td>${nprBadge(npr(f), U, '')}</td></tr>`).join('')}</table>
   <h2 style="font-size:13pt;margin:12px 0 6px">8. Acciones y nuevo NPR</h2>
-  <table><tr><th>#</th><th>Acción</th><th>Tipo</th><th>Responsable</th><th>Fecha</th><th>G2</th><th>O2</th><th>D2</th><th>NPR</th><th>NPR(2)</th></tr>
-  ${F.map((f, i) => `<tr><td>${i + 1}</td><td>${esc(f.accion) || '<i>—</i>'}</td><td>${esc(f.tipo)}</td><td>${esc(f.resp)}</td><td>${f.fecha ? new Date(f.fecha).toLocaleDateString('es-ES') : ''}</td><td>${f.G2 ?? ''}</td><td>${f.O2 ?? ''}</td><td>${f.D2 ?? ''}</td><td>${npr(f) ?? ''}</td><td>${npr2(f) ?? ''}</td></tr>`).join('')}</table>
+  <table><tr><th>#</th><th>Acción</th><th>Tipo</th><th>Responsable</th><th>Fecha</th><th>Estado</th><th>G2</th><th>O2</th><th>D2</th><th>NPR</th><th>NPR(2)</th></tr>
+  ${F.map((f, i) => `<tr><td>${i + 1}</td><td>${esc(f.accion) || '<i>—</i>'}</td><td>${esc(f.tipo)}</td><td>${esc(f.resp)}</td><td>${f.fecha ? new Date(f.fecha).toLocaleDateString('es-ES') : ''}</td><td>${esc(f.estado || '')}</td><td>${f.G2 ?? ''}</td><td>${f.O2 ?? ''}</td><td>${f.D2 ?? ''}</td><td>${npr(f) ?? ''}</td><td>${npr2(f) ?? ''}</td></tr>`).join('')}</table>
   <div class="pb" style="display:grid;grid-template-columns:1.2fr 1fr;gap:14px;margin-top:12px"><div><h2 style="font-size:13pt;margin:0 0 6px">NPR antes y después</h2>${chartSVG(d)}<h2 style="font-size:13pt;margin:10px 0 6px">Matriz G × O</h2><div style="max-width:360px">${matrixHTML(d)}</div></div><div><h2 style="font-size:13pt;margin:0 0 6px">Mínimos</h2>${checksHTML(d)}</div></div>`;
   if (ev) { const r = rubricRows(d, ev);
     h += `<h2 class="pb" style="font-size:13pt;margin:12px 0 6px">Evaluación del profesor</h2><table><tr><th>Criterio</th><th>Peso</th><th>Nota (0–10)</th><th>Comentario</th></tr>${r.rows.map(x => `<tr><td>${esc(x.t)}</td><td>${x.w} %</td><td><b>${fmt(x.v)}</b></td><td>${esc(x.c)}</td></tr>`).join('')}</table>
@@ -2309,7 +2379,7 @@ function rTeacherDetail(t, id) {
     <div class="grid2" style="align-items:start"><div class="card"><h3>2 · Equipo</h3><table><tr><th>Miembro</th><th>Papel</th></tr>${d.equipo.map(x => `<tr><td>${esc(x.nombre)}</td><td>${esc(x.rol)}</td></tr>`).join('')}</table></div>
       <div class="card"><h3>3 · Pasos críticos</h3><table><tr><th>Paso</th><th>Criterio</th><th>Justificación</th></tr>${allNodes(d).map(x => x.n).filter(n => n.critico).map(n => `<tr><td>${esc(nodeName(d, n.id))}</td><td>${esc(n.criterio)}</td><td>${esc(n.just)}</td></tr>`).join('') || '<tr><td colspan="3">—</td></tr>'}</table></div></div>
     <div class="card"><h3>4–7 · Análisis AMFE y 8 · Acciones</h3><div style="overflow-x:auto"><table><tr><th>Paso</th><th>Modo de fallo</th><th>Efecto</th><th>G</th><th>Causa</th><th>O</th><th>Control</th><th>D</th><th>NPR</th><th>Acción</th><th>Resp. · fecha</th><th>NPR(2)</th></tr>
-      ${F.map(f => `<tr><td>${esc(nodeName(d, f.paso))}</td><td>${esc(f.modo)}</td><td>${esc(f.efecto)}</td><td>${f.G ?? ''}</td><td>${esc(f.causa)}</td><td>${f.O ?? ''}</td><td>${esc(f.control)}</td><td>${f.D ?? ''}</td><td>${nprBadge(npr(f), U, '')}${f.G >= 9 ? '<br><span class="tag warn">⚠</span>' : ''}</td><td>${esc(f.accion)}${f.tipo ? `<div class="small muted">${esc(f.tipo)}</div>` : ''}</td><td class="small">${esc(f.resp)}${f.fecha ? '<br>' + new Date(f.fecha).toLocaleDateString('es-ES') : ''}</td><td>${npr2(f) != null ? nprBadge(npr2(f), U, '') : ''}</td></tr>`).join('')}</table></div></div>
+      ${F.map(f => `<tr><td>${esc(nodeName(d, f.paso))}</td><td>${esc(f.modo)}</td><td>${efHtml(f)}</td><td>${f.G ?? ''}</td><td>${esc(f.causa)}</td><td>${f.O ?? ''}</td><td>${ctrlHtml(f)}</td><td>${f.D ?? ''}</td><td>${nprBadge(npr(f), U, '')}${f.G >= 9 ? '<br><span class="tag warn">⚠</span>' : ''}</td><td>${esc(f.accion)}${f.tipo ? `<div class="small muted">${esc(f.tipo)}</div>` : ''}</td><td class="small">${esc(f.resp)}${f.fecha ? '<br>' + new Date(f.fecha).toLocaleDateString('es-ES') : ''}${f.estado ? '<br>' + esc(f.estado) : ''}</td><td>${npr2(f) != null ? nprBadge(npr2(f), U, '') : ''}</td></tr>`).join('')}</table></div></div>
     <div class="grid2" style="align-items:start"><div class="card"><h3>NPR antes y después</h3>${chartSVG(d)}</div><div class="card"><h3>Matriz G × O</h3>${matrixHTML(d)}${lintAll(d).length ? `<h3 style="margin-top:12px">Avisos automáticos</h3>${lintAll(d).map(x => `<div class="lint" style="margin-top:6px"><b>${esc(x.f.modo || 'Fallo')}</b>${x.w.map(w => `<div>⚠ ${esc(w)}</div>`).join('')}</div>`).join('')}` : ''}</div></div>
     <div class="card stack"><div class="row" style="justify-content:space-between"><h3>Evaluación</h3><div class="row"><span>Nota calculada: <b id="tCalc">${fmt(r.calc)}</b></span><span class="nota" id="tTot">${fmt(r.total)}</span></div></div>
       <table class="rub"><tr><th>Criterio</th><th>Qué mirar</th><th>Peso</th><th>Sugerida</th><th>Nota (0–10)</th><th>Comentario</th></tr>
@@ -2369,6 +2439,9 @@ $('#btnHelp').onclick = () => modal(`<h3>Ayuda y glosario del AMFE</h3>
   <dl class="helpg">
   <dt>Modo de fallo</dt><dd>Cómo deja el equipo de hacer su función. <i>Ej.: el rodillo alimentador patina.</i></dd>
   <dt>Efecto</dt><dd>Lo que provoca el fallo cuando ocurre: parada, piezas malas, riesgo. <i>Ej.: paso incorrecto y golpe en el troquel.</i></dd>
+  <dt>Perspectivas</dt><dd>Un mismo fallo se puede valorar desde varios puntos de vista: salud y seguridad, calidad, disponibilidad, medio ambiente, coste… o los que añadáis. Cada perspectiva tiene su efecto y su gravedad, y la G del fallo es <b>la mayor</b>.</dd>
+  <dt>Control de prevención y de detección</dt><dd>El de prevención evita que el fallo ocurra (engrase, sustitución programada) y ayuda a bajar la ocurrencia. El de detección lo descubre antes de que tenga efecto (sensor, inspección) y es el que se valora con la D.</dd>
+  <dt>Corrector ortográfico</dt><dd>Los textos se revisan con el corrector del navegador: subraya en rojo las palabras mal escritas y con clic derecho (o pulsación larga en el móvil) propone la corrección. Si no subraya nada, activad el español en los idiomas del corrector del navegador.</dd>
   <dt>Causa</dt><dd>Por qué ocurre el fallo. <i>Ej.: rodillos desgastados o presión de apriete baja.</i></dd>
   <dt>Control actual</dt><dd>Lo que existe hoy para verlo venir antes del efecto. <i>Ej.: detector de paso que para la prensa.</i></dd>
   <dt>G · Gravedad</dt><dd>Lo grave que es el efecto. Si hay varios, el más grave.</dd>

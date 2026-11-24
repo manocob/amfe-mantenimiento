@@ -11,13 +11,18 @@ Los alumnos siguen los 8 pasos del AMFE:
 1. **Mapa del proceso** al estilo de un mapa de flujo de valor (VSM). Tiene bloques de proveedor, proceso, control, almacén, transporte y cliente. Los bloques se arrastran y se unen con flechas, y se puede marcar el equipo analizado y los pasos críticos.
 2. **Equipo de trabajo**, con coordinador y papeles.
 3. **Pasos críticos**, justificados por salud y seguridad, calidad y disponibilidad.
-4. a 7. **Análisis AMFE.** Para cada fallo se anotan el modo de fallo, el efecto y la gravedad (G), la causa y la ocurrencia (O), y el control actual y la detección (D). La app calcula el **NPR = G × O × D**, lo colorea según el umbral y avisa de los fallos de seguridad.
+4. a 7. **Análisis AMFE.** Para cada fallo se anotan el modo de fallo, sus efectos desde una o varias perspectivas con su gravedad (G), la causa y la ocurrencia (O), y los controles actuales de prevención y de detección (D). La app calcula el **NPR = G × O × D**, lo colorea según el umbral y avisa de los fallos de seguridad.
 8. **Acciones correctoras**, con tipo, responsable, fecha y el nuevo G, O y D. La app recalcula el **NPR(2)** y muestra el porcentaje de reducción.
 
 Al final hay un **resumen** con el gráfico del NPR antes y después de las acciones, la **matriz de riesgo G × O**, la **revisión rápida** de incoherencias y la **comprobación automática de mínimos** de cada paso. Desde ahí se puede imprimir o guardar el informe en PDF, exportar la tabla a Excel (CSV) y descargar el archivo de entrega.
 
 ### Más utilidades
 
+- **Un fallo, varias perspectivas.** Cada fallo se puede analizar desde varios puntos de vista (salud y seguridad, calidad, disponibilidad, medio ambiente, coste), cada uno con su efecto y su gravedad. La G del fallo es la mayor, como indica la metodología. Los alumnos pueden añadir sus propias perspectivas, por ejemplo «Cliente» o «Energía».
+- **Controles de prevención y de detección** por separado, como en los AMFE actuales: el de prevención ayuda a bajar la ocurrencia y el de detección se valora con la D.
+- **Estado de cada acción** (pendiente, en curso o hecha) para hacer el seguimiento.
+- **Corrector ortográfico** del navegador en todos los textos, en español.
+- Nuevos avisos automáticos: efectos sin gravedad, perspectivas repetidas o acciones sin responsable.
 - **Funciona en ordenador, tableta y móvil** (Windows, Mac, Android e iPhone) desde el navegador, sin instalar nada. En el móvil el mapa se desliza de lado y los bloques se arrastran con el dedo; doble toque para abrir el mapa de detalle. Navegadores recomendados: Chrome, Edge, Firefox o Safari actualizados (iOS 16.4 o posterior).
 - **Dos ejemplos resueltos** para enseñar: una bomba de refrigeración (un nivel) y una **línea de estampación transfer de 4 operaciones** con tres niveles de mapa (flujo de valor de la planta › estampación › prensa transfer), 14 fallos y sus acciones.
 - **Guardar y seguir desde otro ordenador.** El botón **Guardar** (o Ctrl/Cmd + S) descarga un **informe .html** que se lee e imprime como un documento y lleva dentro todos los datos. En otro ordenador basta con abrir la app y pulsar **«Abrir informe guardado»**. El informe incluye además un **código de continuación**, así que incluso desde el PDF impreso se puede recuperar el trabajo con «Pegar código».
